@@ -57,7 +57,8 @@ Distributed under the Boost Software License, Version 1.0.
 module std.random;
 
 import std.algorithm, std.c.time, std.conv, std.exception,
-       std.math, std.numeric, std.range, std.traits,
+       std.math, std.numeric, std.range, std.traits, std.mathspecial, 
+       std.typecons,
        core.thread, core.time;
 import std.string : format;
 
@@ -1939,4 +1940,458 @@ unittest
         while (sample(++n) == fst && n < n.max) {}
         assert(n < n.max);
     }
+}
+
+private template isCompileTime(alias a)
+{
+    enum isCompileTime = is(typeof(
+    {
+        enum e = a;    
+    }));
+}
+
+private T randomFloat(T, Rng)(ref Rng r)
+{
+    static if(isCompileTime!(r.max) && isCompileTime!(r.min))
+    {
+        enum denom = cast(T) 1 / (r.max - r.min);
+        T x = (r.front -r.min) * denom; 
+    } 
+    else
+        T x = cast(T)(r.front - r.min)  / (r.max - r.min);
+    
+    r.popFront();
+    return x;
+}
+
+private auto isPowerOfTwo(I)(I i){ return (i & (i - 1)) == 0; }
+
+private int randomInt(int n, Rng)(ref Rng r)
+{
+    static if(isCompileTime!(r.max) && isCompileTime!(r.min))
+    {
+        enum rngInterval = r.max - r.min + 1;
+        static if(rngInterval % n == 0 && isPowerOfTwo(n))
+        {
+            auto x = (r.front - r.min) & (n - 1);
+            r.popFront();
+            return x;
+        }
+    }
+
+    return uniform(0, n, r);
+}
+
+private auto intervalMinMax(alias f, alias fderiv, T)(T x0, T x1)
+{
+    T d0 = fderiv(x0), d1 = fderiv(x1);
+    if(d0 * d1 < 0)
+    {
+        auto ex = f(findRoot((T x) => fderiv(x), x0, x1));
+        return tuple(min(0, ex), max(0, ex)) ;
+    }
+
+    T y0 = f(x0), y1 = f(x1);
+    while(true)
+    {
+        T xmid = 0.5 * (x0 + x1);
+        T dmid = fderiv(xmid);
+        if(dmid * d0 < 0)
+        {
+            auto ex0 = f(findRoot((T x) => fderiv(x), x0, xmid));
+            auto ex1 = f(findRoot((T x) => fderiv(x), xmid, x1));
+            return tuple(min(ex0, ex1), max(ex0, ex1));
+        }
+
+        T ymid = f(xmid);
+        if((ymid - y0) * d0 > 0)
+        {
+            x0 = xmid;
+            y0 = ymid;
+            d0 = dmid;
+        }
+        else
+        {
+            x1 = xmid;
+            y1 = ymid;
+            d1 = dmid;
+        }
+    }
+}
+
+package struct ZigguratLayer(T)
+{
+    // X coordinate of the crossection of upper layer bound and f
+    T x;
+
+    // Upper bound of an interval from which we will select x
+    T xInterval;
+    
+    T lowOffset;
+    
+    T highOffset;
+}
+
+package auto zigguratInitialize(T)(
+    ZigguratLayer!(T)[] layers, ref T tailX, ref T tailXInterval, T totalArea,
+    scope T delegate(T) f, scope T delegate(T) fint, scope T delegate(T) fderiv)
+{
+    auto zigguratInnerWidth(int i, int nlayers, T totalArea)
+    {
+        auto ai = totalArea * (cast(T)(nlayers - (i + 1)) + cast(T)0.5) / (nlayers);
+        auto func = (T x) => fint(x) - x * f(x) - ai; 
+     
+        T x0 = 0;
+        T x1= 1;
+        while(func(x1) < 0)
+            x1 += x1;
+
+        return findRoot(func, x0, x1);
+    }
+    
+    auto zigguratOffsets(T x0, T x1)
+    {
+        auto y0 = f(x0), y1 = f(x1);
+        auto k = (y1 - y0) / (x1 - x0);
+        auto n = y0 - x0*k;
+        auto mm = intervalMinMax!(
+                (T x) => f(x) - (k * x + n), (T x) => fderiv(x) - k)(x0, x1);
+        return tuple(-mm[0] / k, -mm[1] / k);
+    }
+
+    alias ZigguratLayer!(T) L; 
+    auto nlayers = cast(int) layers.length;
+
+    T yprev = 0;
+    T xprev;
+    foreach(i; 0 .. nlayers)
+    {
+        T x = zigguratInnerWidth(i, nlayers, totalArea);
+        T y = f(x);
+        T dy = y - yprev;
+        T innerArea = x * dy;
+        T xInterval = x * (totalArea / nlayers) / innerArea;
+        T dx = xprev - x;
+        T scaleY = dy / dx;
+        
+        if(i == 0)
+        {
+            layers[i] = L(0, 2, T.nan, T.nan);
+            tailX = x;
+            tailXInterval = xInterval / 2;
+        }
+        else
+        {
+            auto tmp = zigguratOffsets(x, xprev);
+            layers[i] = L(x, xInterval, tmp[0] / dx, tmp[1] / dx);
+        }
+ 
+        yprev = y;
+        xprev = x;
+    }
+}
+
+private struct ZigguratTable(alias f, alias fint, alias fderiv, alias totalArea, int n)
+{
+    alias CommonType!(ReturnType!f, typeof(totalArea)) T;
+    alias ZigguratLayer!(T) L;     
+
+    enum nlayers = n;
+    static immutable L[] layers;
+    static immutable T tailX;
+    static immutable T tailXInterval;
+    
+    static this()
+    {
+        L[] l = new L[nlayers];
+        T tx;
+        T txi;
+        zigguratInitialize(l, tx, txi, totalArea, 
+            delegate(T a) => f(a), delegate(T a) => fint(a), 
+            delegate(T a) => fderiv(a));
+        layers = l.idup;
+        tailX = tx; 
+        tailXInterval = txi;
+    }
+}
+
+template fraction(T, alias a, alias b)
+{
+    enum fraction = cast(T) a / cast(T) b;
+}
+
+private auto zigguratAlgorithmImpl(
+    alias f, alias tail, alias head, alias zs, alias rng)(
+    int layer, ReturnType!f x) 
+{
+    alias ReturnType!f T;
+    
+    x *= zs.layers[layer].xInterval;
+    T layerX = zs.layers[layer].x;
+    if(x < layerX)
+        return x;
+
+    if(layer == 0)
+    {
+        if(x < cast(T) 1)
+        {
+            x *= zs.tailXInterval;
+            return x < zs.tailX ? x : tail(zs.tailX, rng);
+        }
+        else 
+            return head(x - 1, rng);
+    }
+
+    T belowX = layer == 1 ? zs.tailX : zs.layers[layer - 1].x;
+    T dx = belowX - layerX;
+    T highOffset = zs.layers[layer].highOffset;
+    T lowOffset = zs.layers[layer].lowOffset;
+    T uInterval = 1 + highOffset;
+
+    while(true)
+    {
+        T uy = uInterval * randomFloat!T(rng);
+        T ux = uInterval * randomFloat!T(rng);
+      
+        T tmp = max(ux, uy);
+        ux = min(ux, uy);
+        uy = highOffset - tmp;
+
+        x = layerX + ux * dx;
+
+        if(uy > 0 || ux > 1)
+            continue; 
+
+        if(uy < lowOffset - ux)
+            return x;
+     
+        T layerY = f(layerX);
+        T dy = layerY - f(layerX + dx);
+        T y = layerY + uy * dy;
+        if(y < f(x))
+            return x;
+    }
+}
+
+private auto zigguratAlgorithm(
+    alias f, alias tail, alias head, alias zs, bool isSymetric, alias rng)()
+{
+    alias ReturnType!f T;
+
+    auto rand = randomInt!(2 * zs.nlayers)(rng);   
+    auto r = zigguratAlgorithmImpl!(
+        f, tail, head, zs, rng)(rand >> 1, randomFloat!T(rng));
+ 
+    static if(isSymetric)
+        return rand & 1 ? r : -r;
+    else
+        return r;
+}
+
+package mixin template Exponential(T)
+{
+    static T f(T x)
+    {
+        return exp(-x);
+    }
+
+    static T fint(T x)
+    {
+        return cast(T) 1 - exp(-x) ;
+    }
+
+    static T fderiv(T x)
+    {
+        return - exp(-x);
+    }
+    
+    enum area = cast(T) 1;
+}
+
+
+auto exponential(T, Rng)(T tau, ref Rng rng)
+{
+    mixin Exponential!T;
+
+    static struct H(Z)
+    {
+        static T dx;
+        static T dy;
+
+        static this()
+        {
+            dx = Z.layers.back.x;
+            dy = cast(T) 1 - exp(- dx);
+        } 
+
+        static T head()(T x, ref Rng rng)
+        {
+            while(true)
+            {
+                T y = randomFloat!T(rng);
+                T tmp = min(x, y);
+                x = max(x, y);
+                y = tmp;
+                x = dx - dx * x;
+                y = dy - dy * y;
+
+                T approx = 
+                    (fraction!(T, 1, 6) * x - fraction!(T, 1,2)) * x * x + x;
+
+                if(y > approx || y > cast(T) 1 - exp(-x))
+                    return x;
+
+                x = randomFloat!T(rng);
+            }
+        }
+    }
+
+    enum nlayers = 64;
+    alias ZigguratTable!(f, fint, fderiv, cast(T) area, nlayers) Z;
+    
+    static T tail(T x1, ref Rng rng)
+    {
+        return x1 + zigguratAlgorithm!(f, tail, H!Z.head, Z, false, rng)();
+    }
+
+    return zigguratAlgorithm!(f, tail, H!Z.head, Z, false, rng)() * tau;
+}
+
+package mixin template Normal(T)
+{
+    static T f(T x)
+    {
+        return exp(-x ^^ 2 / 2) / sqrt(2 * PI);
+    }
+
+    static T fint(T x)
+    {
+        return erf(x / sqrt(2.0)) / 2 ;
+    }
+
+    static T fderiv(T x)
+    {
+        return -x * exp(-x ^^ 2 / 2) / sqrt(2 * PI);
+    }
+
+    enum area = cast(T) 0.5;
+}
+
+auto normal(T, Rng)(T mean, T sigma, ref Rng rng)
+{
+    mixin Normal!T;
+
+    static T tail(T x0, ref Rng rng)
+    {
+        while(true)
+        {
+            T x = -log(randomFloat!T(rng)) / x0;
+            T y = -log(randomFloat!T(rng));
+            if(y + y > x * x)
+                return x0 + x;
+        }
+    }
+
+    static struct H(Z)
+    {
+        static immutable T dx;
+        static immutable T dy;
+
+        static this()
+        {
+            dx = Z.layers.back.x;
+            dy = cast(T) 1 - exp(- dx * dx * cast(T) 0.5);
+        } 
+
+        static auto head()(T x, ref Rng rng)
+        {
+            x *= dx;
+
+            while(true)
+            {
+                T y = randomFloat!T(rng) * dy;
+                T x2 = x * x;
+                T approx = fraction!(T, 1, 2) * x2;
+                if(y > approx)
+                    return x;
+
+                approx -= fraction!(T, 1, 8) * x2 * x2;
+                if(y > approx && y > cast(T) 1 - exp(-x * x * cast(T) 0.5))
+                    return x;
+
+                x = randomFloat!T(rng) * dx;
+            }
+        } 
+    }
+
+    enum nlayers = 64;
+    alias ZigguratTable!(f, fint, fderiv, area, nlayers) Z;
+
+    return mean + 
+        zigguratAlgorithm!(
+            f, tail, H!Z.head, Z, true, rng)() * sigma;
+}
+
+package mixin template Cauchy(T)
+{
+    static T f(T x){ return 1 / (PI * (1 + x*x)); }
+    
+    static T fint(T x){ return atan(x) / PI; }
+    
+    static T fderiv(T x){ return - 2 * x / (PI * (1 + x * x) ^^ 2); }
+    
+    enum area = cast(T) 0.5;
+}
+
+auto cauchy(T, Rng)(T x0, T gamma, ref Rng rng)
+{
+    mixin Cauchy!T;
+
+    static struct Head(Z)
+    {
+        static immutable T dx;
+        static immutable T dy;
+        
+        static this()
+        {
+            dx = Z.layers.back.x;
+            dy = dx * dx / (1 + dx * dx);
+        }
+        
+        static auto head()(T x, ref Rng rng)
+        {
+            x *= dx;
+
+            while(true)
+            {
+                T y = randomFloat!T(rng) * dy;
+                if(y * (1 + x * x) > x * x)
+                    return x;
+
+                x = randomFloat!T(rng) * dx;
+            }
+        }
+    }
+    
+    static struct Tail(Z)
+    {
+        static immutable T uInterval;
+        
+        static this()
+        {
+            uInterval = area - integ(Z.tailX);
+        }
+
+        static T tail()(T x0, ref Rng rng)
+        {
+            return tan(PI * (area - randomFloat!T(rng) * uInterval));
+        }
+    } 
+    
+    enum nlayers = 64;
+    alias ZigguratTable!(f, fint, fderiv, area, nlayers) Z;
+
+    return x0 + 
+        zigguratAlgorithm!(
+            f, Tail!Z.tail, Head!Z.head, Z, true, rng)() * gamma;
 }
