@@ -1950,7 +1950,7 @@ private template isCompileTime(alias a)
     }));
 }
 
-private T randomFloat(T, Rng)(ref Rng r)
+T randomFloat(T, Rng)(ref Rng r)
 {
     static if(isCompileTime!(r.max) && isCompileTime!(r.min))
     {
@@ -2330,6 +2330,92 @@ auto normal(T, Rng)(T mean, T sigma, ref Rng rng)
     return mean + 
         zigguratAlgorithm!(
             f, tail, H!Z.head, Z, true, rng)() * sigma;
+}
+
+struct NormalDist(T, int n = 64)
+{
+    enum area = cast(T) 0.5;
+    enum nlayers = n;
+    alias ZigguratLayer!T L;
+
+    T mean;
+    T sigma;
+    T invSigma;
+
+    L[] layers;
+    T tailX;
+    T tailXInterval;
+    T headDx;
+    T headDy;
+ 
+    T f(T x)
+    {
+        enum k = 1 / (2 * cast(T) PI) ^^ 0.5;
+        return invSigma * exp(-0.5 * (x* invSigma) ^^ 2) * k;
+    }
+
+    T fint(T x)
+    {
+        enum k = 1 / (cast(T) 2) ^^ 0.5;
+        return erf(x * invSigma * k) * 0.5;
+    }
+
+    T fderiv(T x)
+    {
+        enum k = 1 / (2 * cast(T) PI) ^^ 0.5;
+        return -invSigma ^^ 2 * x * exp(- (x * invSigma)  ^^ 2 * 0.5) * k;
+    }
+    
+    this(T mean, T sigma)
+    {
+        this.mean = mean;
+        this.sigma = sigma;
+        this.invSigma = 1 / sigma;
+        
+        layers = new L[nlayers];
+        zigguratInitialize(
+            layers, tailX, tailXInterval, area, &f, &fint, &fderiv); 
+        
+        headDx = layers.back.x;
+        headDy = cast(T) 1 - exp(- (headDx * invSigma) ^^ 2 * cast(T) 0.5);
+    }
+        
+    auto head(Rng)(T x, ref Rng rng)
+    {
+        x *= headDx;
+
+        while(true)
+        {
+            T y = randomFloat!T(rng) * headDy;
+            T x2 = x * x;
+            T approx = fraction!(T, 1, 2) * x2;
+            if(y > approx)
+                return x;
+
+            approx -= fraction!(T, 1, 8) * x2 * x2;
+            if(y > approx && y > cast(T) 1 - exp(-x * x * cast(T) 0.5))
+                return x;
+
+            x = randomFloat!T(rng) * headDx;
+        }
+    }
+    
+    static T tail(Rng)(T x0, ref Rng rng)
+    {
+        while(true)
+        {
+            T x = -log(randomFloat!T(rng)) / x0;
+            T y = -log(randomFloat!T(rng));
+            if(y + y > x * x)
+                return x0 + x;
+        }
+    }
+
+    auto get(Rng)(ref Rng rng)
+    {
+        return mean + 
+            zigguratAlgorithm!(f, tail, head, this, true, rng)();
+    }
 }
 
 package mixin template Cauchy(T)
