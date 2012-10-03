@@ -59,7 +59,7 @@ module std.random;
 import std.algorithm, std.c.time, std.conv, std.exception,
        std.math, std.numeric, std.range, std.traits, std.mathspecial, 
        std.typecons,
-       core.thread, core.time;
+       core.thread, core.time, core.bitop;
 import std.string : format;
 
 version(unittest) import std.typetuple;
@@ -1942,44 +1942,67 @@ unittest
     }
 }
 
-private template isCompileTime(alias a)
+private template hasCompileTimeMinMax(alias a)
 {
-    enum isCompileTime = is(typeof(
-    {
-        enum e = a;    
-    }));
+    template ct(alias a){ enum ct = a; }
+
+    enum hasCompileTimeMinMax = 
+        is(typeof(ct!(a.max))) && is(typeof(ct!(a.min)));
+}
+
+private auto isPowerOfTwo(I)(I i){ return (i & (i - 1)) == 0; }
+
+private template rngMask(alias r) 
+    if(hasCompileTimeMinMax!r && ((r.max - r.min) & (r.max - r.min + 1)) == 0)
+{
+    enum rngMask = r.max - r.min;
 }
 
 T randomFloat(T, Rng)(ref Rng r)
 {
-    static if(isCompileTime!(r.max) && isCompileTime!(r.min))
+    static if(hasCompileTimeMinMax!r)
     {
-        enum denom = cast(T) 1 / (r.max - r.min);
+        enum denom = 1 / (to!T(1) + r.max - r.min);
         T x = (r.front -r.min) * denom; 
     } 
     else
-        T x = cast(T)(r.front - r.min)  / (r.max - r.min);
+        T x = cast(T)(r.front - r.min)  / (to!T(1) + r.max - r.min);
     
     r.popFront();
     return x;
 }
 
-private auto isPowerOfTwo(I)(I i){ return (i & (i - 1)) == 0; }
-
 private int randomInt(int n, Rng)(ref Rng r)
 {
-    static if(isCompileTime!(r.max) && isCompileTime!(r.min))
+    static if(
+        is(typeof(rngMask!r)) && isPowerOfTwo(n) && 
+        (rngMask!r & (n - 1)) == n - 1)
     {
-        enum rngInterval = r.max - r.min + 1;
-        static if(rngInterval % n == 0 && isPowerOfTwo(n))
-        {
-            auto x = (r.front - r.min) & (n - 1);
-            r.popFront();
-            return x;
-        }
+        auto x = (r.front - r.min) & (n - 1);
+        r.popFront();
+        return x;
     }
+    else 
+        return uniform(0, n, r);
+}
 
-    return uniform(0, n, r);
+private void randomIntAndFloat(int n, T, Rng)(ref Rng r, ref int i, ref T a)
+{
+    static if(
+        is(typeof(rngMask!r)) && isPowerOfTwo(n) && 
+        bsr(rngMask!r) >= bsr(n - 1) + T.mant_dig)
+    {
+        auto rand = r.front - r.min;
+        r.popFront(); 
+        i = rand & (n - 1);
+        enum denom = 1 / (to!T(1) + r.max - r.min);
+        a = rand * denom;
+    }
+    else
+    {
+        i = randomInt!n(r);
+        a = randomFloat!T(r);
+    }
 }
 
 private auto intervalMinMax(alias f, alias fderiv, T)(T x0, T x1)
@@ -2178,9 +2201,14 @@ private auto zigguratAlgorithm(
 {
     alias ReturnType!f T;
 
-    auto rand = randomInt!(2 * zs.nlayers)(rng);   
+    //auto rand = randomInt!(2 * zs.nlayers)(rng);
+    int rand;
+    T a;
+    randomIntAndFloat!(2 * zs.nlayers)(rng, rand, a);
+ 
     auto r = zigguratAlgorithmImpl!(
-        f, tail, head, zs, rng)(rand >> 1, randomFloat!T(rng));
+        f, tail, head, zs, rng)(rand >> 1, a);
+        //f, tail, head, zs, rng)(rand >> 1, randomFloat!T(rng));
  
     static if(isSymetric)
         return rand & 1 ? r : -r;
@@ -2342,7 +2370,7 @@ struct NormalDist(T, int n = 64)
     T sigma;
     T invSigma;
 
-    L[] layers;
+    L[n] layers;
     T tailX;
     T tailXInterval;
     T headDx;
@@ -2372,7 +2400,7 @@ struct NormalDist(T, int n = 64)
         this.sigma = sigma;
         this.invSigma = 1 / sigma;
         
-        layers = new L[nlayers];
+        //layers = new L[nlayers];
         zigguratInitialize(
             layers, tailX, tailXInterval, area, &f, &fint, &fderiv); 
         
@@ -2480,4 +2508,10 @@ auto cauchy(T, Rng)(T x0, T gamma, ref Rng rng)
     return x0 + 
         zigguratAlgorithm!(
             f, Tail!Z.tail, Head!Z.head, Z, true, rng)() * gamma;
+}
+
+auto simpleExponential(T, Rng)(T tau, ref Rng rng)
+{
+    enum interval = 1 - T.epsilon;
+    return -log(randomFloat!T(rng) * interval +  T.epsilon) * tau;
 }
