@@ -143,14 +143,17 @@ version(LDC)
         static if(sseVer >= SIMDVer.SSE2)
         {
             pragma(intrinsic, "llvm.x86.sse2.storeu.dq")
-                void __builtin_ia32_storedqu(char* p, byte16 v);
+                void __builtin_ia32_storedqu(char*, byte16);
             
             pragma(intrinsic, "llvm.x86.sse2.storeu.pd")
-                void __builtin_ia32_storeupd(double* p, double2 v);
+                void __builtin_ia32_storeupd(double*, double2);
         }
 
         pragma(intrinsic, "llvm.x86.sse.storeu.ps")
-            void __builtin_ia32_storeups(float* p, float4 v);
+            void __builtin_ia32_storeups(float*, float4);
+        
+        pragma(intrinsic, "llvm.x86.ssse3.pshuf.b.128")
+            ubyte16 __builtin_ia32_pshufb128(ubyte16, ubyte16);
     }
 }
 
@@ -464,12 +467,13 @@ private
 
     /**** Templates for generating TypeTuples ****/
     
-    template staticIota(int start, int end)
+    template staticIota(int start, int end, int stride = 1)
     {
-        static if(start == end)
+        static if(start >= end)
             alias TypeTuple!() staticIota;
         else
-            alias TypeTuple!(start, staticIota!(start + 1, end)) staticIota;
+            alias TypeTuple!(start, staticIota!(start + 1, end, stride)) 
+                staticIota;
     }
 
     template toTypeTuple(alias array, r...)
@@ -479,6 +483,15 @@ private
         else
             alias toTypeTuple!(array, r, array[r.length]) toTypeTuple;
     }
+
+    template interleaveTuples(a...)
+    {
+        static if(a.length == 0)
+            alias TypeTuple!() interleaveTuples;
+        else
+            alias TypeTuple!(a[0], a[$ / 2], a[1 .. $ / 2], a[$ / 2 + 1 .. $])
+                interleaveTuples; 
+    } 
 }
 
 
@@ -1138,9 +1151,9 @@ T permute(SIMDVer Ver = sseVer, T)(T v, ubyte16 control)
 		{
 			static assert(0, "TODO");
 		}
-		else version(GNU)
+		else version(GNU_OR_LDC)
 		{
-			static if(Ver >= SIMDVer.SSSE3)
+			static if(Ver >= SIMDVer.SSE3)
 				return cast(T)__builtin_ia32_pshufb128(cast(ubyte16)v, control);
 			else
 				static assert(0, "Only supported in SSSE3 and above");
@@ -1184,6 +1197,12 @@ T interleaveLow(SIMDVer Ver = sseVer, T)(T v1, T v2)
 			else
 				static assert(0, "Unsupported vector type: " ~ T.stringof);
 		}
+        else version(LDC)
+        {
+            enum int n = NumElements!T;
+            return shufflevector(v1, v2, interleaveTuples!(
+                staticIota!(0, n / 2), staticIota!(n, n + n / 2)));
+        }
 	}
 	else version(ARM)
 	{
@@ -1223,6 +1242,12 @@ T interleaveHigh(SIMDVer Ver = sseVer, T)(T v1, T v2)
 			else
 				static assert(0, "Unsupported vector type: " ~ T.stringof);
 		}
+        else version(LDC)
+        {
+            enum int n = NumElements!T;
+            return shufflevector(v1, v2, interleaveTuples!(
+                staticIota!(n / 2, n), staticIota!(n + n / 2, n + n)));
+        }
 	}
 	else version(ARM)
 	{
