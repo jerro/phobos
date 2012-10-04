@@ -43,6 +43,7 @@ else version(GNU)
 
 import core.simd;
 import std.traits, std.typetuple;
+import std.range;
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -461,7 +462,7 @@ private
 		}
 	}
 
-    /**** Static iota ****/
+    /**** Templates for generating TypeTuples ****/
     
     template staticIota(int start, int end)
     {
@@ -469,6 +470,14 @@ private
             alias TypeTuple!() staticIota;
         else
             alias TypeTuple!(start, staticIota!(start + 1, end)) staticIota;
+    }
+
+    template toTypeTuple(alias array, r...)
+    {
+        static if(array.length == r.length)
+            alias r toTypeTuple;
+        else
+            alias toTypeTuple!(array, r, array[r.length]) toTypeTuple;
     }
 }
 
@@ -777,6 +786,7 @@ if(isVector!T)
 
 // set the Y element
 T setY(SIMDVer Ver = sseVer, T)(T v, T y)
+if(isVector!T)
 {
 	version(X86_OR_X64)
 	{
@@ -802,6 +812,12 @@ T setY(SIMDVer Ver = sseVer, T)(T v, T y)
 			else
 				static assert(0, "Unsupported vector type: " ~ T.stringof);
 		}
+        else version(LDC)
+        {
+            enum int n = NumElements!T;
+            static assert(n >= 2);
+            return shufflevector(v, y, 0, n + 1, staticIota!(2, n));  
+        }
 	}
 	else version(ARM)
 	{
@@ -815,6 +831,7 @@ T setY(SIMDVer Ver = sseVer, T)(T v, T y)
 
 // set the Z element
 T setZ(SIMDVer Ver = sseVer, T)(T v, T z)
+if(isVector!T)
 {
 	version(X86_OR_X64)
 	{
@@ -838,6 +855,12 @@ T setZ(SIMDVer Ver = sseVer, T)(T v, T z)
 			else
 				static assert(0, "Unsupported vector type: " ~ T.stringof);
 		}
+        else version(LDC)
+        {
+            enum int n = NumElements!T;
+            static assert(n >= 3);
+            return shufflevector(v, z, 0, 1,  n + 2, staticIota!(3, n));  
+        }
 	}
 	else version(ARM)
 	{
@@ -851,6 +874,7 @@ T setZ(SIMDVer Ver = sseVer, T)(T v, T z)
 
 // set the W element
 T setW(SIMDVer Ver = sseVer, T)(T v, T w)
+if(isVector!T)
 {
 	version(X86_OR_X64)
 	{
@@ -874,6 +898,12 @@ T setW(SIMDVer Ver = sseVer, T)(T v, T w)
 			else
 				static assert(0, "Unsupported vector type: " ~ T.stringof);
 		}
+        else version(LDC)
+        {
+            enum int n = NumElements!T;
+            static assert(n >= 4);
+            return shufflevector(v, w, 0, 1, 2, n + 3, staticIota!(4, n));  
+        }
 	}
 	else version(ARM)
 	{
@@ -892,7 +922,6 @@ T swizzle(string swiz, SIMDVer Ver = sseVer, T)(T v)
 	int[N] parseElements(string swiz, size_t N)(string[] elements)
 	{
 		import std.string;
-		import std.algorithm;
 		auto swizzleKey = toLower(swiz);
 
 		// initialise the element list to 'identity'
@@ -900,12 +929,22 @@ T swizzle(string swiz, SIMDVer Ver = sseVer, T)(T v)
 		foreach(int i; 0..N)
 			r[i] = i;
 
+        static int countUntil(R, T)(R r, T a)
+        {
+            int i = 0;
+            for(; !r.empty; r.popFront(), i++)
+                if(r.front == a)
+                    return i; 
+
+            return -1;
+        }    
+
 		if(swizzleKey.length == 1)
 		{
 			// broadcast
 			foreach(s; elements)
 			{
-				int i = cast(int) countUntil(s, swizzleKey[0]);
+                auto i = countUntil(s, swizzleKey[0]); 
 				if(i != -1)
 				{
 					// set all elements to 'i'
@@ -1074,6 +1113,10 @@ T swizzle(string swiz, SIMDVer Ver = sseVer, T)(T v)
 					}
 				}
 			}
+            else version(LDC)
+            {
+                return shufflevector(v, v, toTypeTuple!elements);
+            }
 		}
 		else version(ARM)
 		{
