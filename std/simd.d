@@ -42,7 +42,7 @@ else version(GNU)
 }
 
 import core.simd;
-import std.traits;
+import std.traits, std.typetuple;
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -96,6 +96,67 @@ else
 	// TODO: I think it would be worth emulating this API with pure FPU on unsupported architectures...
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// LLVM instructions and intrinsics for LDC.
+///////////////////////////////////////////////////////////////////////////////
+
+version(LDC)
+{
+    template RepeatType(T, size_t n, R...)
+    {
+        static if(n == 0)
+            alias R RepeatType;
+        else
+            alias RepeatType!(T, n - 1, T, R) RepeatType;
+    }
+
+    template llvmInstructions(string v)
+    {
+        enum llvmInstructions = 
+        `
+        pragma(shufflevector)
+            `~v~` shufflevector(`~v~`, `~v~`, RepeatType!(int, `~v~`.init.length));
+
+        pragma(insertelement)
+            `~v~` insertelement(`~v~`, typeof(`~v~`.init.ptr[0]), int);
+
+        pragma(extractelement)
+            typeof(`~v~`.init.ptr[0]) extractelement(`~v~`, int);`;
+    } 
+
+    mixin( 
+        llvmInstructions!"float4" ~
+        llvmInstructions!"double2" ~
+        llvmInstructions!"ubyte16" ~
+        llvmInstructions!"byte16" ~
+        llvmInstructions!"ushort8" ~
+        llvmInstructions!"short8" ~
+        llvmInstructions!"uint4" ~
+        llvmInstructions!"int4" ~
+        llvmInstructions!"ulong2" ~
+        llvmInstructions!"long2");
+
+   
+    version(X86_OR_X64)
+    { 
+        static if(sseVer >= SIMDVer.SSE2)
+        {
+            pragma(intrinsic, "llvm.x86.sse2.storeu.dq")
+                void __builtin_ia32_storedqu(char* p, byte16 v);
+            
+            pragma(intrinsic, "llvm.x86.sse2.storeu.pd")
+                void __builtin_ia32_storeupd(double* p, double2 v);
+        }
+
+        pragma(intrinsic, "llvm.x86.sse.storeu.ps")
+            void __builtin_ia32_storeups(float* p, float4 v);
+    }
+}
+
+version(GNU)
+    version = GNU_OR_LDC;
+version(LDC)
+    version = GNU_OR_LDC;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Internal constants
@@ -272,8 +333,18 @@ private
 	//	template isVector(T : __vector(U[N]), U, size_t N) { enum bool isVector = true; }
 	//	template isVector(T) { enum bool isVector = false; }
 
-	// pull the base type from a vector, array, or primitive type
+	// pull the base type from a vector, array, or primitive 
+    // type. The first version does not work for vectors.
 	template ArrayType(T : T[]) { alias T ArrayType; }
+    template ArrayType(T) if(isVector!T)
+    {  
+        // typeof T.array.init does not work for some reason, so we use this 
+        alias typeof(()
+        {
+            T a;
+            return a.array;
+        }()) ArrayType;
+    }
 	//	template VectorType(T : Vector!T) { alias T VectorType; }
 	template BaseType(T)
 	{
@@ -389,6 +460,16 @@ private
 				static assert(0, "Incorrect type");
 		}
 	}
+
+    /**** Static iota ****/
+    
+    template staticIota(int start, int end)
+    {
+        static if(start == end)
+            alias TypeTuple!() staticIota;
+        else
+            alias TypeTuple!(start, staticIota!(start + 1, end)) staticIota;
+    }
 }
 
 
@@ -401,13 +482,13 @@ private
 // Load and store
 
 // load scalar into all components (!! or just X?). Note: SLOW on many architectures
-Vector!T loadScalar(SIMDVer Ver = sseVer, T)(T s)
+Vector!T loadScalar(T, SIMDVer Ver = sseVer)(BaseType!T s)
 {
-	return loadScalar(&s);
+	return loadScalar!V(&s);
 }
 
 // load scaler from memory
-Vector!T loadScalar(SIMDVer Ver = sseVer, T)(T* pS)
+T loadScalar(T, SIMDVer Ver = sseVer)(BaseType!T* pS) if(isVector!T)
 {
 	version(X86_OR_X64)
 	{
@@ -417,13 +498,20 @@ Vector!T loadScalar(SIMDVer Ver = sseVer, T)(T* pS)
 		}
 		else version(GNU)
 		{
-			static if(is(T == float4))
-				return __builtin_ia32_loadsss(pS);
-			else static if(is(T == double2))
+			static if(is(T == float[4]))         
+				return __builtin_ia32_loadss(pS);
+			else static if(is(T == double[2])) 
 				return __builtin_ia32_loadddup(pV);
 			else
-				return *cast(Vector!T*)pS;
+				static assert(0, "TODO");
 		}
+        else version(LDC)
+        {
+            //TODO: non-optimal
+            T r = 0;
+            r = insertelement(r, *pS, 0);
+            return r;
+        }
 	}
 	else version(ARM)
 	{
@@ -436,7 +524,7 @@ Vector!T loadScalar(SIMDVer Ver = sseVer, T)(T* pS)
 }
 
 // load vector from an unaligned address
-Vector!T loadUnaligned(SIMDVer Ver = sseVer, T)(T* pV)
+T loadUnaligned(T, SIMDVer Ver = sseVer)(BaseType!T* pV) @trusted
 {
 	version(X86_OR_X64)
 	{
@@ -453,6 +541,18 @@ Vector!T loadUnaligned(SIMDVer Ver = sseVer, T)(T* pV)
 			else
 				return cast(Vector!T)__builtin_ia32_loaddqu(cast(char*)pV);
 		}
+        else version(LDC)
+        {
+            union U
+            {
+                T v;
+                ArrayType!T a;
+            }
+ 
+            U u;
+            u.a = *cast(ArrayType!(T)*) pV;
+            return u.v; 
+        }
 	}
 	else version(ARM)
 	{
@@ -465,7 +565,7 @@ Vector!T loadUnaligned(SIMDVer Ver = sseVer, T)(T* pV)
 }
 
 // return the X element in a scalar register
-T getScalar(SIMDVer Ver = sseVer, T)(Vector!T v)
+BaseType!T getScalar(SIMDVer Ver = sseVer, T)(T v) if(isVector!T)
 {
 	version(X86_OR_X64)
 	{
@@ -491,6 +591,10 @@ T getScalar(SIMDVer Ver = sseVer, T)(Vector!T v)
 			else
 				static assert(0, "Unsupported vector type: " ~ T.stringof);
 		}
+        else version(LDC)
+        {
+            return extractelement(v, 0);
+        }
 	}
 	else version(ARM)
 	{
@@ -503,14 +607,20 @@ T getScalar(SIMDVer Ver = sseVer, T)(Vector!T v)
 }
 
 // store the X element to the address provided
-void storeScalar(SIMDVer Ver = sseVer, T)(Vector!T v, T* pS)
+// If we use BaseType!T* as a parameter type, T can not be infered
+// That's why we need to use template parameter S and check that it is
+// the base type in the template constraint. We will use this in some other
+// functions too.
+void storeScalar(SIMDVer Ver = sseVer, T, S)(T v, S* pS) 
+if(isVector!T && is(BaseType!T == S))
 {
 	// TODO: check this optimises correctly!! (opcode writes directly to memory)
 	*pS = getScalar(v);
 }
 
 // store the vector to an unaligned address
-void storeUnaligned(SIMDVer Ver = sseVer, T)(Vector!T v, T* pV)
+void storeUnaligned(SIMDVer Ver = sseVer, T, S)(T v, S* pV)
+if(isVector!T && is(BaseType!T == S))
 {
 	version(X86_OR_X64)
 	{
@@ -518,7 +628,7 @@ void storeUnaligned(SIMDVer Ver = sseVer, T)(Vector!T v, T* pV)
 		{
 			static assert(0, "TODO");
 		}
-		else version(GNU)
+		else version(GNU_OR_LDC)
 		{
 			static if(is(T == float4))
 				__builtin_ia32_storeups(pV, v);
@@ -543,7 +653,7 @@ void storeUnaligned(SIMDVer Ver = sseVer, T)(Vector!T v, T* pV)
 // Shuffle, swizzle, permutation
 
 // broadcast X to all elements
-T getX(SIMDVer Ver = sseVer, T)(T v)
+T getX(SIMDVer Ver = sseVer, T)(T v) if(isVector!T)
 {
 	version(X86_OR_X64)
 	{
@@ -561,7 +671,7 @@ T getX(SIMDVer Ver = sseVer, T)(T v)
 }
 
 // broadcast Y to all elements
-T getY(SIMDVer Ver = sseVer, T)(T v)
+T getY(SIMDVer Ver = sseVer, T)(T v) if(isVector!T)
 {
 	version(X86_OR_X64)
 	{
@@ -582,7 +692,7 @@ T getY(SIMDVer Ver = sseVer, T)(T v)
 }
 
 // broadcast Z to all elements
-T getZ(SIMDVer Ver = sseVer, T)(T v)
+T getZ(SIMDVer Ver = sseVer, T)(T v) if(isVector!T)
 {
 	version(X86_OR_X64)
 	{
@@ -602,7 +712,7 @@ T getZ(SIMDVer Ver = sseVer, T)(T v)
 }
 
 // broadcast W to all elements
-T getW(SIMDVer Ver = sseVer, T)(T v)
+T getW(SIMDVer Ver = sseVer, T)(T v) if(isVector!T)
 {
 	version(X86_OR_X64)
 	{
@@ -622,7 +732,8 @@ T getW(SIMDVer Ver = sseVer, T)(T v)
 }
 
 // set the X element
-T setX(SIMDVer Ver = sseVer, T)(T v, T x)
+T setX(SIMDVer Ver = sseVer, T)(T v, T x) 
+if(isVector!T)
 {
 	version(X86_OR_X64)
 	{
@@ -648,6 +759,11 @@ T setX(SIMDVer Ver = sseVer, T)(T v, T x)
 			else
 				static assert(0, "Unsupported vector type: " ~ T.stringof);
 		}
+        else version(LDC)
+        {
+            enum int n = NumElements!T;
+            return shufflevector(v, x, n, staticIota!(1, n));  
+        }
 	}
 	else version(ARM)
 	{
