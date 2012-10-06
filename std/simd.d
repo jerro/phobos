@@ -113,16 +113,15 @@ version(LDC)
 
     template llvmInstructions(string v)
     {
-        enum llvmInstructions = 
-        `
-        pragma(shufflevector)
-            `~v~` shufflevector(`~v~`, `~v~`, RepeatType!(int, `~v~`.init.length));
+        enum llvmInstructions = `
+            pragma(shufflevector)
+                `~v~` shufflevector(`~v~`, `~v~`, RepeatType!(int, `~v~`.init.length));
 
-        pragma(insertelement)
-            `~v~` insertelement(`~v~`, typeof(`~v~`.init.ptr[0]), int);
+            pragma(insertelement)
+                `~v~` insertelement(`~v~`, typeof(`~v~`.init.ptr[0]), int);
 
-        pragma(extractelement)
-            typeof(`~v~`.init.ptr[0]) extractelement(`~v~`, int);`;
+            pragma(extractelement)
+                typeof(`~v~`.init.ptr[0]) extractelement(`~v~`, int);`;
     } 
 
     mixin( 
@@ -140,55 +139,144 @@ version(LDC)
    
     version(X86_OR_X64)
     { 
-
         pragma(intrinsic, "llvm.x86.sse.storeu.ps")
             void __builtin_ia32_storeups(float*, float4);
+               
+        pragma(intrinsic, "llvm.x86.sse.cmp.ps")
+            float4 __builtin_ia32_cmpps(float4, float4, byte);
+ 
+        // SSE2:
         
-        pragma(intrinsic, "llvm.x86.ssse3.pshuf.b.128")
-            ubyte16 __builtin_ia32_pshufb128(ubyte16, ubyte16);
+        pragma(intrinsic, "llvm.x86.sse2.padds.w")
+            short8 __builtin_ia32_paddsw(short8, short8);
+ 
+        pragma(intrinsic, "llvm.x86.sse2.paddus.w")
+            short8 __builtin_ia32_paddusw(ushort8, ushort8); 
+        
+        pragma(intrinsic, "llvm.x86.sse2.padds.b")
+            byte16 __builtin_ia32_paddsb(byte16, byte16);
+ 
+        pragma(intrinsic, "llvm.x86.sse2.paddus.b")
+            byte16 __builtin_ia32_paddusb(ubyte16, ubyte16);
+ 
+        pragma(intrinsic, "llvm.x86.sse2.psubs.w")
+            short8 __builtin_ia32_psubsw(short8, short8);
+ 
+        pragma(intrinsic, "llvm.x86.sse2.psubus.w")
+            short8 __builtin_ia32_psubusw(ushort8, ushort8); 
+        
+        pragma(intrinsic, "llvm.x86.sse2.psubs.b")
+            byte16 __builtin_ia32_psubsb(byte16, byte16);
+ 
+        pragma(intrinsic, "llvm.x86.sse2.psubus.b")
+            byte16 __builtin_ia32_psubusb(ubyte16, ubyte16);
+ 
+        pragma(intrinsic, "llvm.x86.sse2.cmp.pd")
+            double2 __builtin_ia32_cmppd(double2, double2, byte);
+ 
+        pragma(intrinsic, "llvm.x86.sse2.storeu.dq")
+            void __builtin_ia32_storedqu(char*, byte16);
+
+        pragma(intrinsic, "llvm.x86.sse2.storeu.pd")
+            void __builtin_ia32_storeupd(double*, double2);
+
+        pragma(intrinsic, "llvm.x86.sse2.packssdw.128")
+            short8 __builtin_ia32_packssdw128(int4, int4); 
+
+        pragma(intrinsic, "llvm.x86.sse2.packsswb.128")
+            byte16 __builtin_ia32_packsswb128(short8, short8); 
+
+        pragma(intrinsic, "llvm.x86.sse2.packuswb.128")
+            ubyte16 __builtin_ia32_packuswb128(ushort8, ushort8); 
 
         pragma(intrinsic, "llvm.x86.sse2.cvtps2dq")
             int4 __builtin_ia32_cvtps2dq(float4);
 
         pragma(intrinsic, "llvm.x86.sse2.cvtpd2dq")
             int4 __builtin_ia32_cvtpd2dq(double2);
-        
+
         pragma(intrinsic, "llvm.x86.sse2.cvtpd2ps")
             float4 __builtin_ia32_cvtpd2ps(double2);
-        
+
         pragma(intrinsic, "llvm.x86.sse2.cvtdq2ps")
             float4 __builtin_ia32_cvtdq2ps(int4);
-        
+
         pragma(intrinsic, "llvm.x86.sse2.cvtps2pd")
             double2 __builtin_ia32_cvtps2pd(float4);
-        
+
         pragma(intrinsic, "llvm.x86.sse2.cvtdq2pd")
             double2 __builtin_ia32_cvtdq2pd(int4);
-        
-        static if(sseVer >= SIMDVer.SSE2)
-        {
-            pragma(intrinsic, "llvm.x86.sse2.storeu.dq")
-                void __builtin_ia32_storedqu(char*, byte16);
-            
-            pragma(intrinsic, "llvm.x86.sse2.storeu.pd")
-                void __builtin_ia32_storeupd(double*, double2);
-            
-            pragma(intrinsic, "llvm.x86.sse2.packssdw.128")
-                short8 __builtin_ia32_packssdw128(int4, int4); 
-     
-            pragma(intrinsic, "llvm.x86.sse2.packsswb.128")
-                byte16 __builtin_ia32_packsswb128(short8, short8); 
-     
-            pragma(intrinsic, "llvm.x86.sse2.packuswb.128")
-                ubyte16 __builtin_ia32_packuswb128(ushort8, ushort8); 
-        }
 
-        static if(sseVer >= SIMDVer.SSE41)
-        {
-            pragma(intrinsic, "llvm.x86.sse41.packusdw.128")
-                ushort8 __builtin_ia32_packusdw128(uint4, uint4); 
-        }
+        pragma(intrinsic, "llvm.x86.sse2.psrli.q")
+            ulong2 __builtin_ia32_psrlqi128(ulong2, int);
+
+        pragma(intrinsic, "llvm.x86.sse2.psrai.d")
+            int4 __builtin_ia32_psradi128(int4, int);
+
+        pragma(intrinsic, "llvm.x86.sse2.psrli.d")
+            uint4 __builtin_ia32_psrldi128(uint4, int);
+
+        pragma(intrinsic, "llvm.x86.sse2.psrai.w")
+            short8 __builtin_ia32_psrawi128(short8, int);
+
+        pragma(intrinsic, "llvm.x86.sse2.psrli.w")
+            short8 __builtin_ia32_psrlwi128(short8, int);
+        
+        //SSE3: 
+        pragma(intrinsic, "llvm.x86.ssse3.pshuf.b.128")
+            ubyte16 __builtin_ia32_pshufb128(ubyte16, ubyte16);
+
+        pragma(intrinsic, "llvm.x86.ssse3.pabs.d.128")
+            int4 __builtin_ia32_pabsd128(int4);
+
+        pragma(intrinsic, "llvm.x86.ssse3.pabs.w.128")
+            short8 __builtin_ia32_pabsw128(short8);
+        
+        pragma(intrinsic, "llvm.x86.ssse3.pabs.b.128")
+            byte16 __builtin_ia32_pabsb128(byte16);
+        
+        //SSE41:
+
+        pragma(intrinsic, "llvm.x86.sse41.packusdw.128")
+            ushort8 __builtin_ia32_packusdw128(uint4, uint4); 
+       
+        pragma(intrinsic, "llvm.x86.sse41.blendvpd")
+            double2 __builtin_ia32_blendvpd(double2, double2, double2);        
+ 
+        pragma(intrinsic, "llvm.x86.sse41.blendvps")
+            float4 __builtin_ia32_blendvps(float4, float4, float4);        
+ 
+        pragma(intrinsic, "llvm.x86.sse41.pblendvb")
+            byte16 __builtin_ia32_pblendvb(byte16, byte16, byte16);
+
+        //SSE42:
+
+        pragma(intrinsic, "llvm.x86.sse42.pcmpgtq")
+            long2 __builtin_ia32_pcmpgtq(long2, long2);  
     }
+
+    template ldcFloatMaskLess(string type, string a, string b, bool includeEqual)
+    {
+        enum params = a~`, `~b~`, `~(includeEqual ? "2" : "1");
+        
+        enum ldcFloatMaskLess = `
+            static if(is(T == double2))
+            {
+                return __builtin_ia32_cmppd(`~params~`);
+            }
+            else static if(is(T == float4))
+            {
+                return __builtin_ia32_cmpps(`~params~`);
+            }
+            else
+                static assert(0, "Unsupported vector type: " ~ `~type~`);`;
+    }
+
+    alias byte16 PblendvbParam;
+}
+else version(GNU)
+{
+    alias ubyte16 PblendvbParam;
 }
 
 version(GNU)
@@ -1599,12 +1687,22 @@ T abs(SIMDVer Ver = sseVer, T)(T v)
 		{
 			static assert(0, "TODO");
 		}
-		else version(GNU)
+		else version(GNU_OR_LDC)
 		{
 			static if(is(T == double2))
-				return __builtin_ia32_andnpd(cast(double2)signMask2, v);
+            {
+                version(GNU)
+                    return __builtin_ia32_andnpd(cast(double2)signMask2, v);
+                else
+                    return cast(double2)(~signMask2 & cast(ulong2)v);
+            }
 			else static if(is(T == float4))
-				return __builtin_ia32_andnps(cast(float4)signMask4, v);
+            {
+                version(GNU)
+                    return __builtin_ia32_andnps(cast(float4)signMask4, v);
+                else
+                    return cast(float4)(~signMask4 & cast(uint4)v);
+            }
 			else static if(Ver >= SIMDVer.SSSE3)
 			{
 				static if(is64bitElement!(T))
@@ -1618,7 +1716,7 @@ T abs(SIMDVer Ver = sseVer, T)(T v)
 			}
 			else static if(is(T == int4))
 			{
-				int4 t = shiftRightImmediate!Ver(v, 31);
+				int4 t = shiftRightImmediate!(31, Ver)(v);
 				return sub!Ver(xor!Ver(v, t), t);
 			}
 			else static if(is(T == short8))
@@ -1718,7 +1816,7 @@ T addSaturate(SIMDVer Ver = sseVer, T)(T v1, T v2)
 		{
 			static assert(0, "TODO");
 		}
-		else version(GNU)
+		else version(GNU_OR_LDC)
 		{
 			static if(is(T == short8))
 				return __builtin_ia32_paddsw(v1, v2);
@@ -1779,7 +1877,7 @@ T subSaturate(SIMDVer Ver = sseVer, T)(T v1, T v2)
 		{
 			static assert(0, "TODO");
 		}
-		else version(GNU)
+		else version(GNU_OR_LDC)
 		{
 			static if(is(T == short8))
 				return __builtin_ia32_psubsw(v1, v2);
@@ -2836,6 +2934,10 @@ T and(SIMDVer Ver = sseVer, T)(T v1, T v2)
 			else
 				return __builtin_ia32_pand128(v1, v2);
 		}
+        else version(LDC)
+        {
+            return cast(T)(cast(int4) v1 & cast(int4) v2); 
+        }
 	}
 	else version(ARM)
 	{
@@ -2900,6 +3002,10 @@ T xor(SIMDVer Ver = sseVer, T)(T v1, T v2)
 			else
 				return __builtin_ia32_pxor128(v1, v2);
 		}
+        else version(LDC)
+        {
+            return cast(T) (cast(int4) v1 ^ cast(int4) v2); 
+        }
 	}
 	else version(ARM)
 	{
@@ -2991,7 +3097,7 @@ T shiftRight(SIMDVer Ver = sseVer, T)(T v1, T v2)
 		{
 			static assert(0, "TODO");
 		}
-		else version(GNU)
+		else version(GNU_OR_LDC)
 		{
 			static if(is(T == ulong2))
 				return __builtin_ia32_psrlq128(v1, v2);
@@ -3030,7 +3136,7 @@ T shiftRightImmediate(size_t bits, SIMDVer Ver = sseVer, T)(T v)
 			{
 				static assert(0, "TODO");
 			}
-			else version(GNU)
+			else version(GNU_OR_LDC)
 			{
 				static if(is(T == ulong2))
 					return __builtin_ia32_psrlqi128(v, bits);
@@ -3427,22 +3533,20 @@ void16 maskGreater(SIMDVer Ver = sseVer, T)(T a, T b)
 		else version(GNU)
 		{
 			static if(is(T == double2))
-				return __builtin_ia32_cmpgtpd(a, b);
+            {
+                return __builtin_ia32_cmpgtpd(a, b);
+            }
 			else static if(is(T == float4))
-				return __builtin_ia32_cmpgtps(a, b);
+            {
+                return __builtin_ia32_cmpgtps(a, b);
+            }
 			else static if(is(T == long2))
 			{
-				static if(Ver >= SIMDVer.SSE42)
-					return __builtin_ia32_pcmpgtq(a, b);
-				else
-					static assert(0, "Only supported in SSE4.2 and above");
+                return __builtin_ia32_pcmpgtq(a, b);
 			}
 			else static if(is(T == ulong2))
 			{
-				static if(Ver >= SIMDVer.SSE42)
-					return __builtin_ia32_pcmpgtq(a + signMask2, b + signMask2);
-				else
-					static assert(0, "Only supported in SSE4.2 and above");
+                return __builtin_ia32_pcmpgtq(a + signMask2, b + signMask2);
 			}
 			else static if(is(T == int4))
 				return __builtin_ia32_pcmpgtd128(a, b);
@@ -3457,6 +3561,10 @@ void16 maskGreater(SIMDVer Ver = sseVer, T)(T a, T b)
 			else
 				static assert(0, "Unsupported vector type: " ~ T.stringof);
 		}
+        else version(LDC)
+        {
+            mixin(ldcFloatMaskLess!(T.stringof, "b", "a", false));
+        }
 	}
 	else version(ARM)
 	{
@@ -3486,6 +3594,10 @@ void16 maskGreaterEqual(SIMDVer Ver = sseVer, T)(T a, T b)
 			else
 				return or!Ver(cast(void16)maskGreater!Ver(a, b), cast(void16)maskEqual!Ver(a, b)); // compound greater OR equal
 		}
+        else version(LDC)
+        {
+            mixin(ldcFloatMaskLess!(T.stringof, "b", "a", true));
+        }
 	}
 	else version(ARM)
 	{
@@ -3515,6 +3627,10 @@ void16 maskLess(SIMDVer Ver = sseVer, T)(T a, T b)
 			else
 				return maskGreaterEqual!Ver(b, a); // reverse the args
 		}
+        else version(LDC)
+        {
+            mixin(ldcFloatMaskLess!(T.stringof, "a", "b", false));
+        }
 	}
 	else version(ARM)
 	{
@@ -3544,6 +3660,10 @@ void16 maskLessEqual(SIMDVer Ver = sseVer, T)(T a, T b)
 			else
 				return maskGreaterEqual!Ver(b, a); // reverse the args
 		}
+        else version(LDC)
+        {
+            mixin(ldcFloatMaskLess!(T.stringof, "a", "b", true));
+        }
 	}
 	else version(ARM)
 	{
@@ -3568,7 +3688,7 @@ T select(SIMDVer Ver = sseVer, T)(void16 mask, T x, T y)
 		{
 			static assert(0, "TODO");
 		}
-		else version(GNU)
+		else version(GNU_OR_LDC)
 		{
 			static if(Ver >= SIMDVer.SSE41)
 			{
@@ -3577,7 +3697,10 @@ T select(SIMDVer Ver = sseVer, T)(void16 mask, T x, T y)
 				else static if(is(T == float4))
 					return __builtin_ia32_blendvps(y, x, cast(float4)mask);
 				else
-					return cast(T)__builtin_ia32_pblendvb128(cast(ubyte16)y, cast(ubyte16)x, cast(ubyte16)mask);
+                {
+                    alias PblendvbParam P;
+					return cast(T)__builtin_ia32_pblendvb128(cast(P)y, cast(P)x, cast(P)mask);
+                }
 			}
 			else
 				return xor!Ver(x, and!Ver(cast(T)mask, xor!Ver(y, x)));
