@@ -139,120 +139,1791 @@ version(LDC)
    
     version(X86_OR_X64)
     { 
-        pragma(intrinsic, "llvm.x86.sse.storeu.ps")
-            void __builtin_ia32_storeups(float*, float4);
-               
-        pragma(intrinsic, "llvm.x86.sse.cmp.ps")
+        // These should probably be in a separate file, possibly distributed
+        // with LDC.        
+
+        pragma (intrinsic, "llvm.x86.sse.add.ss")
+            float4 __builtin_ia32_addss(float4, float4);
+
+        pragma (intrinsic, "llvm.x86.sse.sub.ss")
+            float4 __builtin_ia32_subss(float4, float4);
+
+        pragma (intrinsic, "llvm.x86.sse.mul.ss")
+            float4 __builtin_ia32_mulss(float4, float4);
+
+        pragma (intrinsic, "llvm.x86.sse.div.ss")
+            float4 __builtin_ia32_divss(float4, float4);
+
+        pragma (intrinsic, "llvm.x86.sse.sqrt.ss")
+            float4 __builtin_ia32_sqrtss(float4);
+
+        pragma (intrinsic, "llvm.x86.sse.sqrt.ps")
+            float4 __builtin_ia32_sqrtps(float4);
+
+        pragma (intrinsic, "llvm.x86.sse.rcp.ss")
+            float4 __builtin_ia32_rcpss(float4);
+
+        pragma (intrinsic, "llvm.x86.sse.rcp.ps")
+            float4 __builtin_ia32_rcpps(float4);
+
+        pragma (intrinsic, "llvm.x86.sse.rsqrt.ss")
+            float4 __builtin_ia32_rsqrtss(float4);
+
+        pragma (intrinsic, "llvm.x86.sse.rsqrt.ps")
+            float4 __builtin_ia32_rsqrtps(float4);
+
+        pragma (intrinsic, "llvm.x86.sse.min.ss")
+            float4 __builtin_ia32_minss(float4, float4);
+
+        pragma (intrinsic, "llvm.x86.sse.min.ps")
+            float4 __builtin_ia32_minps(float4, float4);
+
+        pragma (intrinsic, "llvm.x86.sse.max.ss")
+            float4 __builtin_ia32_maxss(float4, float4);
+
+        pragma (intrinsic, "llvm.x86.sse.max.ps")
+            float4 __builtin_ia32_maxps(float4, float4);
+
+        pragma (intrinsic, "llvm.x86.sse.cmp.ss")
+            float4 __builtin_ia32_cmpss(float4, float4, byte);
+
+        pragma (intrinsic, "llvm.x86.sse.cmp.ps")
             float4 __builtin_ia32_cmpps(float4, float4, byte);
- 
-        // SSE2:
-        
-        pragma(intrinsic, "llvm.x86.sse2.padds.w")
-            short8 __builtin_ia32_paddsw(short8, short8);
- 
-        pragma(intrinsic, "llvm.x86.sse2.paddus.w")
-            short8 __builtin_ia32_paddusw(ushort8, ushort8); 
-        
-        pragma(intrinsic, "llvm.x86.sse2.padds.b")
-            byte16 __builtin_ia32_paddsb(byte16, byte16);
- 
-        pragma(intrinsic, "llvm.x86.sse2.paddus.b")
-            byte16 __builtin_ia32_paddusb(ubyte16, ubyte16);
- 
-        pragma(intrinsic, "llvm.x86.sse2.psubs.w")
-            short8 __builtin_ia32_psubsw(short8, short8);
- 
-        pragma(intrinsic, "llvm.x86.sse2.psubus.w")
-            short8 __builtin_ia32_psubusw(ushort8, ushort8); 
-        
-        pragma(intrinsic, "llvm.x86.sse2.psubs.b")
-            byte16 __builtin_ia32_psubsb(byte16, byte16);
- 
-        pragma(intrinsic, "llvm.x86.sse2.psubus.b")
-            byte16 __builtin_ia32_psubusb(ubyte16, ubyte16);
- 
-        pragma(intrinsic, "llvm.x86.sse2.cmp.pd")
+
+        pragma (intrinsic, "llvm.x86.sse.comieq.ss")
+            int __builtin_ia32_comieq(float4, float4);
+
+        pragma (intrinsic, "llvm.x86.sse.comilt.ss")
+            int __builtin_ia32_comilt(float4, float4);
+
+        pragma (intrinsic, "llvm.x86.sse.comile.ss")
+            int __builtin_ia32_comile(float4, float4);
+
+        pragma (intrinsic, "llvm.x86.sse.comigt.ss")
+            int __builtin_ia32_comigt(float4, float4);
+
+        pragma (intrinsic, "llvm.x86.sse.comige.ss")
+            int __builtin_ia32_comige(float4, float4);
+
+        pragma (intrinsic, "llvm.x86.sse.comineq.ss")
+            int __builtin_ia32_comineq(float4, float4);
+
+        pragma (intrinsic, "llvm.x86.sse.ucomieq.ss")
+            int __builtin_ia32_ucomieq(float4, float4);
+
+        pragma (intrinsic, "llvm.x86.sse.ucomilt.ss")
+            int __builtin_ia32_ucomilt(float4, float4);
+
+        pragma (intrinsic, "llvm.x86.sse.ucomile.ss")
+            int __builtin_ia32_ucomile(float4, float4);
+
+        pragma (intrinsic, "llvm.x86.sse.ucomigt.ss")
+            int __builtin_ia32_ucomigt(float4, float4);
+
+        pragma (intrinsic, "llvm.x86.sse.ucomige.ss")
+            int __builtin_ia32_ucomige(float4, float4);
+
+        pragma (intrinsic, "llvm.x86.sse.ucomineq.ss")
+            int __builtin_ia32_ucomineq(float4, float4);
+
+        pragma (intrinsic, "llvm.x86.sse.cvtss2si")
+            int __builtin_ia32_cvtss2si(float4);
+
+        pragma (intrinsic, "llvm.x86.sse.cvtss2si64")
+            long __builtin_ia32_cvtss2si64(float4);
+
+        pragma (intrinsic, "llvm.x86.sse.cvttss2si")
+            int __builtin_ia32_cvttss2si(float4);
+
+        pragma (intrinsic, "llvm.x86.sse.cvttss2si64")
+            long __builtin_ia32_cvttss2si64(float4);
+
+        pragma (intrinsic, "llvm.x86.sse.cvtsi2ss")
+            float4 __builtin_ia32_cvtsi2ss(float4, int);
+
+        pragma (intrinsic, "llvm.x86.sse.cvtsi642ss")
+            float4 __builtin_ia32_cvtsi642ss(float4, long);
+
+        pragma (intrinsic, "llvm.x86.sse.storeu.ps")
+            void __builtin_ia32_storeups(void*, float4);
+
+        pragma (intrinsic, "llvm.x86.sse.sfence")
+            void __builtin_ia32_sfence();
+
+        pragma (intrinsic, "llvm.x86.sse.movmsk.ps")
+            int __builtin_ia32_movmskps(float4);
+
+        pragma (intrinsic, "llvm.x86.sse2.add.sd")
+            double2 __builtin_ia32_addsd(double2, double2);
+
+        pragma (intrinsic, "llvm.x86.sse2.sub.sd")
+            double2 __builtin_ia32_subsd(double2, double2);
+
+        pragma (intrinsic, "llvm.x86.sse2.mul.sd")
+            double2 __builtin_ia32_mulsd(double2, double2);
+
+        pragma (intrinsic, "llvm.x86.sse2.div.sd")
+            double2 __builtin_ia32_divsd(double2, double2);
+
+        pragma (intrinsic, "llvm.x86.sse2.sqrt.sd")
+            double2 __builtin_ia32_sqrtsd(double2);
+
+        pragma (intrinsic, "llvm.x86.sse2.sqrt.pd")
+            double2 __builtin_ia32_sqrtpd(double2);
+
+        pragma (intrinsic, "llvm.x86.sse2.min.sd")
+            double2 __builtin_ia32_minsd(double2, double2);
+
+        pragma (intrinsic, "llvm.x86.sse2.min.pd")
+            double2 __builtin_ia32_minpd(double2, double2);
+
+        pragma (intrinsic, "llvm.x86.sse2.max.sd")
+            double2 __builtin_ia32_maxsd(double2, double2);
+
+        pragma (intrinsic, "llvm.x86.sse2.max.pd")
+            double2 __builtin_ia32_maxpd(double2, double2);
+
+        pragma (intrinsic, "llvm.x86.sse2.cmp.sd")
+            double2 __builtin_ia32_cmpsd(double2, double2, byte);
+
+        pragma (intrinsic, "llvm.x86.sse2.cmp.pd")
             double2 __builtin_ia32_cmppd(double2, double2, byte);
- 
-        pragma(intrinsic, "llvm.x86.sse2.storeu.dq")
-            void __builtin_ia32_storedqu(char*, byte16);
 
-        pragma(intrinsic, "llvm.x86.sse2.storeu.pd")
-            void __builtin_ia32_storeupd(double*, double2);
+        pragma (intrinsic, "llvm.x86.sse2.comieq.sd")
+            int __builtin_ia32_comisdeq(double2, double2);
 
-        pragma(intrinsic, "llvm.x86.sse2.packssdw.128")
-            short8 __builtin_ia32_packssdw128(int4, int4); 
+        pragma (intrinsic, "llvm.x86.sse2.comilt.sd")
+            int __builtin_ia32_comisdlt(double2, double2);
 
-        pragma(intrinsic, "llvm.x86.sse2.packsswb.128")
-            byte16 __builtin_ia32_packsswb128(short8, short8); 
+        pragma (intrinsic, "llvm.x86.sse2.comile.sd")
+            int __builtin_ia32_comisdle(double2, double2);
 
-        pragma(intrinsic, "llvm.x86.sse2.packuswb.128")
-            ubyte16 __builtin_ia32_packuswb128(ushort8, ushort8); 
+        pragma (intrinsic, "llvm.x86.sse2.comigt.sd")
+            int __builtin_ia32_comisdgt(double2, double2);
 
-        pragma(intrinsic, "llvm.x86.sse2.cvtps2dq")
-            int4 __builtin_ia32_cvtps2dq(float4);
+        pragma (intrinsic, "llvm.x86.sse2.comige.sd")
+            int __builtin_ia32_comisdge(double2, double2);
 
-        pragma(intrinsic, "llvm.x86.sse2.cvtpd2dq")
-            int4 __builtin_ia32_cvtpd2dq(double2);
+        pragma (intrinsic, "llvm.x86.sse2.comineq.sd")
+            int __builtin_ia32_comisdneq(double2, double2);
 
-        pragma(intrinsic, "llvm.x86.sse2.cvtpd2ps")
-            float4 __builtin_ia32_cvtpd2ps(double2);
+        pragma (intrinsic, "llvm.x86.sse2.ucomieq.sd")
+            int __builtin_ia32_ucomisdeq(double2, double2);
 
-        pragma(intrinsic, "llvm.x86.sse2.cvtdq2ps")
-            float4 __builtin_ia32_cvtdq2ps(int4);
+        pragma (intrinsic, "llvm.x86.sse2.ucomilt.sd")
+            int __builtin_ia32_ucomisdlt(double2, double2);
 
-        pragma(intrinsic, "llvm.x86.sse2.cvtps2pd")
-            double2 __builtin_ia32_cvtps2pd(float4);
+        pragma (intrinsic, "llvm.x86.sse2.ucomile.sd")
+            int __builtin_ia32_ucomisdle(double2, double2);
 
-        pragma(intrinsic, "llvm.x86.sse2.cvtdq2pd")
-            double2 __builtin_ia32_cvtdq2pd(int4);
+        pragma (intrinsic, "llvm.x86.sse2.ucomigt.sd")
+            int __builtin_ia32_ucomisdgt(double2, double2);
 
-        pragma(intrinsic, "llvm.x86.sse2.psrli.q")
-            ulong2 __builtin_ia32_psrlqi128(ulong2, int);
+        pragma (intrinsic, "llvm.x86.sse2.ucomige.sd")
+            int __builtin_ia32_ucomisdge(double2, double2);
 
-        pragma(intrinsic, "llvm.x86.sse2.psrai.d")
-            int4 __builtin_ia32_psradi128(int4, int);
+        pragma (intrinsic, "llvm.x86.sse2.ucomineq.sd")
+            int __builtin_ia32_ucomisdneq(double2, double2);
 
-        pragma(intrinsic, "llvm.x86.sse2.psrli.d")
-            uint4 __builtin_ia32_psrldi128(uint4, int);
+        pragma (intrinsic, "llvm.x86.sse2.padds.b")
+            byte16 __builtin_ia32_paddsb128(byte16, byte16);
 
-        pragma(intrinsic, "llvm.x86.sse2.psrai.w")
+        pragma (intrinsic, "llvm.x86.sse2.padds.w")
+            short8 __builtin_ia32_paddsw128(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.sse2.paddus.b")
+            byte16 __builtin_ia32_paddusb128(byte16, byte16);
+
+        pragma (intrinsic, "llvm.x86.sse2.paddus.w")
+            short8 __builtin_ia32_paddusw128(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.sse2.psubs.b")
+            byte16 __builtin_ia32_psubsb128(byte16, byte16);
+
+        pragma (intrinsic, "llvm.x86.sse2.psubs.w")
+            short8 __builtin_ia32_psubsw128(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.sse2.psubus.b")
+            byte16 __builtin_ia32_psubusb128(byte16, byte16);
+
+        pragma (intrinsic, "llvm.x86.sse2.psubus.w")
+            short8 __builtin_ia32_psubusw128(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.sse2.pmulhu.w")
+            short8 __builtin_ia32_pmulhuw128(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.sse2.pmulh.w")
+            short8 __builtin_ia32_pmulhw128(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.sse2.pmulu.dq")
+            long2 __builtin_ia32_pmuludq128(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.sse2.pmadd.wd")
+            int4 __builtin_ia32_pmaddwd128(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.sse2.pavg.b")
+            byte16 __builtin_ia32_pavgb128(byte16, byte16);
+
+        pragma (intrinsic, "llvm.x86.sse2.pavg.w")
+            short8 __builtin_ia32_pavgw128(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.sse2.pmaxu.b")
+            byte16 __builtin_ia32_pmaxub128(byte16, byte16);
+
+        pragma (intrinsic, "llvm.x86.sse2.pmaxs.w")
+            short8 __builtin_ia32_pmaxsw128(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.sse2.pminu.b")
+            byte16 __builtin_ia32_pminub128(byte16, byte16);
+
+        pragma (intrinsic, "llvm.x86.sse2.pmins.w")
+            short8 __builtin_ia32_pminsw128(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.sse2.psad.bw")
+            long2 __builtin_ia32_psadbw128(byte16, byte16);
+
+        pragma (intrinsic, "llvm.x86.sse2.psll.w")
+            short8 __builtin_ia32_psllw128(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.sse2.psll.d")
+            int4 __builtin_ia32_pslld128(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.sse2.psll.q")
+            long2 __builtin_ia32_psllq128(long2, long2);
+
+        pragma (intrinsic, "llvm.x86.sse2.psrl.w")
+            short8 __builtin_ia32_psrlw128(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.sse2.psrl.d")
+            int4 __builtin_ia32_psrld128(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.sse2.psrl.q")
+            long2 __builtin_ia32_psrlq128(long2, long2);
+
+        pragma (intrinsic, "llvm.x86.sse2.psra.w")
+            short8 __builtin_ia32_psraw128(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.sse2.psra.d")
+            int4 __builtin_ia32_psrad128(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.sse2.pslli.w")
+            short8 __builtin_ia32_psllwi128(short8, int);
+
+        pragma (intrinsic, "llvm.x86.sse2.pslli.d")
+            int4 __builtin_ia32_pslldi128(int4, int);
+
+        pragma (intrinsic, "llvm.x86.sse2.pslli.q")
+            long2 __builtin_ia32_psllqi128(long2, int);
+
+        pragma (intrinsic, "llvm.x86.sse2.psrli.w")
+            short8 __builtin_ia32_psrlwi128(short8, int);
+
+        pragma (intrinsic, "llvm.x86.sse2.psrli.d")
+            int4 __builtin_ia32_psrldi128(int4, int);
+
+        pragma (intrinsic, "llvm.x86.sse2.psrli.q")
+            long2 __builtin_ia32_psrlqi128(long2, int);
+
+        pragma (intrinsic, "llvm.x86.sse2.psrai.w")
             short8 __builtin_ia32_psrawi128(short8, int);
 
-        pragma(intrinsic, "llvm.x86.sse2.psrli.w")
-            short8 __builtin_ia32_psrlwi128(short8, int);
-        
-        //SSE3: 
-        pragma(intrinsic, "llvm.x86.ssse3.pshuf.b.128")
-            ubyte16 __builtin_ia32_pshufb128(ubyte16, ubyte16);
+        pragma (intrinsic, "llvm.x86.sse2.psrai.d")
+            int4 __builtin_ia32_psradi128(int4, int);
 
-        pragma(intrinsic, "llvm.x86.ssse3.pabs.d.128")
+        pragma (intrinsic, "llvm.x86.sse2.psll.dq")
+            long2 __builtin_ia32_pslldqi128(long2, int);
+
+        pragma (intrinsic, "llvm.x86.sse2.psrl.dq")
+            long2 __builtin_ia32_psrldqi128(long2, int);
+
+        pragma (intrinsic, "llvm.x86.sse2.psll.dq.bs")
+            long2 __builtin_ia32_pslldqi128_byteshift(long2, int);
+
+        pragma (intrinsic, "llvm.x86.sse2.psrl.dq.bs")
+            long2 __builtin_ia32_psrldqi128_byteshift(long2, int);
+
+        pragma (intrinsic, "llvm.x86.sse2.cvtdq2pd")
+            double2 __builtin_ia32_cvtdq2pd(int4);
+
+        pragma (intrinsic, "llvm.x86.sse2.cvtdq2ps")
+            float4 __builtin_ia32_cvtdq2ps(int4);
+
+        pragma (intrinsic, "llvm.x86.sse2.cvtpd2dq")
+            int4 __builtin_ia32_cvtpd2dq(double2);
+
+        pragma (intrinsic, "llvm.x86.sse2.cvttpd2dq")
+            int4 __builtin_ia32_cvttpd2dq(double2);
+
+        pragma (intrinsic, "llvm.x86.sse2.cvtpd2ps")
+            float4 __builtin_ia32_cvtpd2ps(double2);
+
+        pragma (intrinsic, "llvm.x86.sse2.cvtps2dq")
+            int4 __builtin_ia32_cvtps2dq(float4);
+
+        pragma (intrinsic, "llvm.x86.sse2.cvttps2dq")
+            int4 __builtin_ia32_cvttps2dq(float4);
+
+        pragma (intrinsic, "llvm.x86.sse2.cvtps2pd")
+            double2 __builtin_ia32_cvtps2pd(float4);
+
+        pragma (intrinsic, "llvm.x86.sse2.cvtsd2si")
+            int __builtin_ia32_cvtsd2si(double2);
+
+        pragma (intrinsic, "llvm.x86.sse2.cvtsd2si64")
+            long __builtin_ia32_cvtsd2si64(double2);
+
+        pragma (intrinsic, "llvm.x86.sse2.cvttsd2si")
+            int __builtin_ia32_cvttsd2si(double2);
+
+        pragma (intrinsic, "llvm.x86.sse2.cvttsd2si64")
+            long __builtin_ia32_cvttsd2si64(double2);
+
+        pragma (intrinsic, "llvm.x86.sse2.cvtsi2sd")
+            double2 __builtin_ia32_cvtsi2sd(double2, int);
+
+        pragma (intrinsic, "llvm.x86.sse2.cvtsi642sd")
+            double2 __builtin_ia32_cvtsi642sd(double2, long);
+
+        pragma (intrinsic, "llvm.x86.sse2.cvtsd2ss")
+            float4 __builtin_ia32_cvtsd2ss(float4, double2);
+
+        pragma (intrinsic, "llvm.x86.sse2.cvtss2sd")
+            double2 __builtin_ia32_cvtss2sd(double2, float4);
+
+        pragma (intrinsic, "llvm.x86.sse2.storeu.pd")
+            void __builtin_ia32_storeupd(void*, double2);
+
+        pragma (intrinsic, "llvm.x86.sse2.storeu.dq")
+            void __builtin_ia32_storedqu(void*, byte16);
+
+        pragma (intrinsic, "llvm.x86.sse2.storel.dq")
+            void __builtin_ia32_storelv4si(void*, int4);
+
+        pragma (intrinsic, "llvm.x86.sse2.packsswb.128")
+            byte16 __builtin_ia32_packsswb128(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.sse2.packssdw.128")
+            short8 __builtin_ia32_packssdw128(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.sse2.packuswb.128")
+            byte16 __builtin_ia32_packuswb128(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.sse2.movmsk.pd")
+            int __builtin_ia32_movmskpd(double2);
+
+        pragma (intrinsic, "llvm.x86.sse2.pmovmskb.128")
+            int __builtin_ia32_pmovmskb128(byte16);
+
+        pragma (intrinsic, "llvm.x86.sse2.maskmov.dqu")
+            void __builtin_ia32_maskmovdqu(byte16, byte16, void*);
+
+        pragma (intrinsic, "llvm.x86.sse2.clflush")
+            void __builtin_ia32_clflush(void*);
+
+        pragma (intrinsic, "llvm.x86.sse2.lfence")
+            void __builtin_ia32_lfence();
+
+        pragma (intrinsic, "llvm.x86.sse2.mfence")
+            void __builtin_ia32_mfence();
+
+        pragma (intrinsic, "llvm.x86.sse3.addsub.ps")
+            float4 __builtin_ia32_addsubps(float4, float4);
+
+        pragma (intrinsic, "llvm.x86.sse3.addsub.pd")
+            double2 __builtin_ia32_addsubpd(double2, double2);
+
+        pragma (intrinsic, "llvm.x86.sse3.hadd.ps")
+            float4 __builtin_ia32_haddps(float4, float4);
+
+        pragma (intrinsic, "llvm.x86.sse3.hadd.pd")
+            double2 __builtin_ia32_haddpd(double2, double2);
+
+        pragma (intrinsic, "llvm.x86.sse3.hsub.ps")
+            float4 __builtin_ia32_hsubps(float4, float4);
+
+        pragma (intrinsic, "llvm.x86.sse3.hsub.pd")
+            double2 __builtin_ia32_hsubpd(double2, double2);
+
+        pragma (intrinsic, "llvm.x86.sse3.ldu.dq")
+            byte16 __builtin_ia32_lddqu(void*);
+
+        pragma (intrinsic, "llvm.x86.sse3.monitor")
+            void __builtin_ia32_monitor(void*, int, int);
+
+        pragma (intrinsic, "llvm.x86.sse3.mwait")
+            void __builtin_ia32_mwait(int, int);
+
+        pragma (intrinsic, "llvm.x86.ssse3.phadd.w.128")
+            short8 __builtin_ia32_phaddw128(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.ssse3.phadd.d.128")
+            int4 __builtin_ia32_phaddd128(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.ssse3.phadd.sw.128")
+            short8 __builtin_ia32_phaddsw128(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.ssse3.phsub.w.128")
+            short8 __builtin_ia32_phsubw128(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.ssse3.phsub.d.128")
+            int4 __builtin_ia32_phsubd128(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.ssse3.phsub.sw.128")
+            short8 __builtin_ia32_phsubsw128(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.ssse3.pmadd.ub.sw.128")
+            short8 __builtin_ia32_pmaddubsw128(byte16, byte16);
+
+        pragma (intrinsic, "llvm.x86.ssse3.pmul.hr.sw.128")
+            short8 __builtin_ia32_pmulhrsw128(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.ssse3.pshuf.b.128")
+            byte16 __builtin_ia32_pshufb128(byte16, byte16);
+
+        pragma (intrinsic, "llvm.x86.ssse3.psign.b.128")
+            byte16 __builtin_ia32_psignb128(byte16, byte16);
+
+        pragma (intrinsic, "llvm.x86.ssse3.psign.w.128")
+            short8 __builtin_ia32_psignw128(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.ssse3.psign.d.128")
+            int4 __builtin_ia32_psignd128(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.ssse3.pabs.b.128")
+            byte16 __builtin_ia32_pabsb128(byte16);
+
+        pragma (intrinsic, "llvm.x86.ssse3.pabs.w.128")
+            short8 __builtin_ia32_pabsw128(short8);
+
+        pragma (intrinsic, "llvm.x86.ssse3.pabs.d.128")
             int4 __builtin_ia32_pabsd128(int4);
 
-        pragma(intrinsic, "llvm.x86.ssse3.pabs.w.128")
-            short8 __builtin_ia32_pabsw128(short8);
-        
-        pragma(intrinsic, "llvm.x86.ssse3.pabs.b.128")
-            byte16 __builtin_ia32_pabsb128(byte16);
-        
-        //SSE41:
+        pragma (intrinsic, "llvm.x86.sse41.round.ss")
+            float4 __builtin_ia32_roundss(float4, float4, int);
 
-        pragma(intrinsic, "llvm.x86.sse41.packusdw.128")
-            ushort8 __builtin_ia32_packusdw128(uint4, uint4); 
-       
-        pragma(intrinsic, "llvm.x86.sse41.blendvpd")
-            double2 __builtin_ia32_blendvpd(double2, double2, double2);        
- 
-        pragma(intrinsic, "llvm.x86.sse41.blendvps")
-            float4 __builtin_ia32_blendvps(float4, float4, float4);        
- 
-        pragma(intrinsic, "llvm.x86.sse41.pblendvb")
-            byte16 __builtin_ia32_pblendvb(byte16, byte16, byte16);
+        pragma (intrinsic, "llvm.x86.sse41.round.ps")
+            float4 __builtin_ia32_roundps(float4, int);
 
-        //SSE42:
+        pragma (intrinsic, "llvm.x86.sse41.round.sd")
+            double2 __builtin_ia32_roundsd(double2, double2, int);
 
-        pragma(intrinsic, "llvm.x86.sse42.pcmpgtq")
-            long2 __builtin_ia32_pcmpgtq(long2, long2);  
+        pragma (intrinsic, "llvm.x86.sse41.round.pd")
+            double2 __builtin_ia32_roundpd(double2, int);
+
+        pragma (intrinsic, "llvm.x86.sse41.pmovsxbd")
+            int4 __builtin_ia32_pmovsxbd128(byte16);
+
+        pragma (intrinsic, "llvm.x86.sse41.pmovsxbq")
+            long2 __builtin_ia32_pmovsxbq128(byte16);
+
+        pragma (intrinsic, "llvm.x86.sse41.pmovsxbw")
+            short8 __builtin_ia32_pmovsxbw128(byte16);
+
+        pragma (intrinsic, "llvm.x86.sse41.pmovsxdq")
+            long2 __builtin_ia32_pmovsxdq128(int4);
+
+        pragma (intrinsic, "llvm.x86.sse41.pmovsxwd")
+            int4 __builtin_ia32_pmovsxwd128(short8);
+
+        pragma (intrinsic, "llvm.x86.sse41.pmovsxwq")
+            long2 __builtin_ia32_pmovsxwq128(short8);
+
+        pragma (intrinsic, "llvm.x86.sse41.pmovzxbd")
+            int4 __builtin_ia32_pmovzxbd128(byte16);
+
+        pragma (intrinsic, "llvm.x86.sse41.pmovzxbq")
+            long2 __builtin_ia32_pmovzxbq128(byte16);
+
+        pragma (intrinsic, "llvm.x86.sse41.pmovzxbw")
+            short8 __builtin_ia32_pmovzxbw128(byte16);
+
+        pragma (intrinsic, "llvm.x86.sse41.pmovzxdq")
+            long2 __builtin_ia32_pmovzxdq128(int4);
+
+        pragma (intrinsic, "llvm.x86.sse41.pmovzxwd")
+            int4 __builtin_ia32_pmovzxwd128(short8);
+
+        pragma (intrinsic, "llvm.x86.sse41.pmovzxwq")
+            long2 __builtin_ia32_pmovzxwq128(short8);
+
+        pragma (intrinsic, "llvm.x86.sse41.phminposuw")
+            short8 __builtin_ia32_phminposuw128(short8);
+
+        pragma (intrinsic, "llvm.x86.sse41.pmaxsb")
+            byte16 __builtin_ia32_pmaxsb128(byte16, byte16);
+
+        pragma (intrinsic, "llvm.x86.sse41.pmaxsd")
+            int4 __builtin_ia32_pmaxsd128(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.sse41.pmaxud")
+            int4 __builtin_ia32_pmaxud128(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.sse41.pmaxuw")
+            short8 __builtin_ia32_pmaxuw128(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.sse41.pminsb")
+            byte16 __builtin_ia32_pminsb128(byte16, byte16);
+
+        pragma (intrinsic, "llvm.x86.sse41.pminsd")
+            int4 __builtin_ia32_pminsd128(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.sse41.pminud")
+            int4 __builtin_ia32_pminud128(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.sse41.pminuw")
+            short8 __builtin_ia32_pminuw128(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.aesni.aesimc")
+            long2 __builtin_ia32_aesimc128(long2);
+
+        pragma (intrinsic, "llvm.x86.aesni.aesenc")
+            long2 __builtin_ia32_aesenc128(long2, long2);
+
+        pragma (intrinsic, "llvm.x86.aesni.aesenclast")
+            long2 __builtin_ia32_aesenclast128(long2, long2);
+
+        pragma (intrinsic, "llvm.x86.aesni.aesdec")
+            long2 __builtin_ia32_aesdec128(long2, long2);
+
+        pragma (intrinsic, "llvm.x86.aesni.aesdeclast")
+            long2 __builtin_ia32_aesdeclast128(long2, long2);
+
+        pragma (intrinsic, "llvm.x86.aesni.aeskeygenassist")
+            long2 __builtin_ia32_aeskeygenassist128(long2, byte);
+
+        pragma (intrinsic, "llvm.x86.sse41.packusdw")
+            short8 __builtin_ia32_packusdw128(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.sse41.pmuldq")
+            long2 __builtin_ia32_pmuldq128(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.sse41.extractps")
+            int __builtin_ia32_extractps128(float4, int);
+
+        pragma (intrinsic, "llvm.x86.sse41.insertps")
+            float4 __builtin_ia32_insertps128(float4, float4, int);
+
+        pragma (intrinsic, "llvm.x86.sse41.pblendvb")
+            byte16 __builtin_ia32_pblendvb128(byte16, byte16, byte16);
+
+        pragma (intrinsic, "llvm.x86.sse41.pblendw")
+            short8 __builtin_ia32_pblendw128(short8, short8, int);
+
+        pragma (intrinsic, "llvm.x86.sse41.blendpd")
+            double2 __builtin_ia32_blendpd(double2, double2, int);
+
+        pragma (intrinsic, "llvm.x86.sse41.blendps")
+            float4 __builtin_ia32_blendps(float4, float4, int);
+
+        pragma (intrinsic, "llvm.x86.sse41.blendvpd")
+            double2 __builtin_ia32_blendvpd(double2, double2, double2);
+
+        pragma (intrinsic, "llvm.x86.sse41.blendvps")
+            float4 __builtin_ia32_blendvps(float4, float4, float4);
+
+        pragma (intrinsic, "llvm.x86.sse41.dppd")
+            double2 __builtin_ia32_dppd(double2, double2, int);
+
+        pragma (intrinsic, "llvm.x86.sse41.dpps")
+            float4 __builtin_ia32_dpps(float4, float4, int);
+
+        pragma (intrinsic, "llvm.x86.sse41.mpsadbw")
+            short8 __builtin_ia32_mpsadbw128(byte16, byte16, int);
+
+        pragma (intrinsic, "llvm.x86.sse41.movntdqa")
+            long2 __builtin_ia32_movntdqa(void*);
+
+        pragma (intrinsic, "llvm.x86.sse41.ptestz")
+            int __builtin_ia32_ptestz128(long2, long2);
+
+        pragma (intrinsic, "llvm.x86.sse41.ptestc")
+            int __builtin_ia32_ptestc128(long2, long2);
+
+        pragma (intrinsic, "llvm.x86.sse41.ptestnzc")
+            int __builtin_ia32_ptestnzc128(long2, long2);
+
+        pragma (intrinsic, "llvm.x86.sse42.crc32.32.8")
+            int __builtin_ia32_crc32qi(int, byte);
+
+        pragma (intrinsic, "llvm.x86.sse42.crc32.32.16")
+            int __builtin_ia32_crc32hi(int, short);
+
+        pragma (intrinsic, "llvm.x86.sse42.crc32.32.32")
+            int __builtin_ia32_crc32si(int, int);
+
+        pragma (intrinsic, "llvm.x86.sse42.crc32.64.64")
+            long __builtin_ia32_crc32di(long, long);
+
+        pragma (intrinsic, "llvm.x86.sse42.pcmpistrm128")
+            byte16 __builtin_ia32_pcmpistrm128(byte16, byte16, byte);
+
+        pragma (intrinsic, "llvm.x86.sse42.pcmpistri128")
+            int __builtin_ia32_pcmpistri128(byte16, byte16, byte);
+
+        pragma (intrinsic, "llvm.x86.sse42.pcmpistria128")
+            int __builtin_ia32_pcmpistria128(byte16, byte16, byte);
+
+        pragma (intrinsic, "llvm.x86.sse42.pcmpistric128")
+            int __builtin_ia32_pcmpistric128(byte16, byte16, byte);
+
+        pragma (intrinsic, "llvm.x86.sse42.pcmpistrio128")
+            int __builtin_ia32_pcmpistrio128(byte16, byte16, byte);
+
+        pragma (intrinsic, "llvm.x86.sse42.pcmpistris128")
+            int __builtin_ia32_pcmpistris128(byte16, byte16, byte);
+
+        pragma (intrinsic, "llvm.x86.sse42.pcmpistriz128")
+            int __builtin_ia32_pcmpistriz128(byte16, byte16, byte);
+
+        pragma (intrinsic, "llvm.x86.sse42.pcmpestrm128")
+            byte16 __builtin_ia32_pcmpestrm128(byte16, int, byte16, int, byte);
+
+        pragma (intrinsic, "llvm.x86.sse42.pcmpestri128")
+            int __builtin_ia32_pcmpestri128(byte16, int, byte16, int, byte);
+
+        pragma (intrinsic, "llvm.x86.sse42.pcmpestria128")
+            int __builtin_ia32_pcmpestria128(byte16, int, byte16, int, byte);
+
+        pragma (intrinsic, "llvm.x86.sse42.pcmpestric128")
+            int __builtin_ia32_pcmpestric128(byte16, int, byte16, int, byte);
+
+        pragma (intrinsic, "llvm.x86.sse42.pcmpestrio128")
+            int __builtin_ia32_pcmpestrio128(byte16, int, byte16, int, byte);
+
+        pragma (intrinsic, "llvm.x86.sse42.pcmpestris128")
+            int __builtin_ia32_pcmpestris128(byte16, int, byte16, int, byte);
+
+        pragma (intrinsic, "llvm.x86.sse42.pcmpestriz128")
+            int __builtin_ia32_pcmpestriz128(byte16, int, byte16, int, byte);
+
+        pragma (intrinsic, "llvm.x86.avx.addsub.pd.256")
+            double4 __builtin_ia32_addsubpd256(double4, double4);
+
+        pragma (intrinsic, "llvm.x86.avx.addsub.ps.256")
+            float8 __builtin_ia32_addsubps256(float8, float8);
+
+        pragma (intrinsic, "llvm.x86.avx.max.pd.256")
+            double4 __builtin_ia32_maxpd256(double4, double4);
+
+        pragma (intrinsic, "llvm.x86.avx.max.ps.256")
+            float8 __builtin_ia32_maxps256(float8, float8);
+
+        pragma (intrinsic, "llvm.x86.avx.min.pd.256")
+            double4 __builtin_ia32_minpd256(double4, double4);
+
+        pragma (intrinsic, "llvm.x86.avx.min.ps.256")
+            float8 __builtin_ia32_minps256(float8, float8);
+
+        pragma (intrinsic, "llvm.x86.avx.sqrt.pd.256")
+            double4 __builtin_ia32_sqrtpd256(double4);
+
+        pragma (intrinsic, "llvm.x86.avx.sqrt.ps.256")
+            float8 __builtin_ia32_sqrtps256(float8);
+
+        pragma (intrinsic, "llvm.x86.avx.rsqrt.ps.256")
+            float8 __builtin_ia32_rsqrtps256(float8);
+
+        pragma (intrinsic, "llvm.x86.avx.rcp.ps.256")
+            float8 __builtin_ia32_rcpps256(float8);
+
+        pragma (intrinsic, "llvm.x86.avx.round.pd.256")
+            double4 __builtin_ia32_roundpd256(double4, int);
+
+        pragma (intrinsic, "llvm.x86.avx.round.ps.256")
+            float8 __builtin_ia32_roundps256(float8, int);
+
+        pragma (intrinsic, "llvm.x86.avx.hadd.pd.256")
+            double4 __builtin_ia32_haddpd256(double4, double4);
+
+        pragma (intrinsic, "llvm.x86.avx.hsub.ps.256")
+            float8 __builtin_ia32_hsubps256(float8, float8);
+
+        pragma (intrinsic, "llvm.x86.avx.hsub.pd.256")
+            double4 __builtin_ia32_hsubpd256(double4, double4);
+
+        pragma (intrinsic, "llvm.x86.avx.hadd.ps.256")
+            float8 __builtin_ia32_haddps256(float8, float8);
+
+        pragma (intrinsic, "llvm.x86.avx.vpermilvar.pd")
+            double2 __builtin_ia32_vpermilvarpd(double2, long2);
+
+        pragma (intrinsic, "llvm.x86.avx.vpermilvar.ps")
+            float4 __builtin_ia32_vpermilvarps(float4, int4);
+
+        pragma (intrinsic, "llvm.x86.avx.vpermilvar.pd.256")
+            double4 __builtin_ia32_vpermilvarpd256(double4, long4);
+
+        pragma (intrinsic, "llvm.x86.avx.vpermilvar.ps.256")
+            float8 __builtin_ia32_vpermilvarps256(float8, int8);
+
+        pragma (intrinsic, "llvm.x86.avx.vperm2f128.pd.256")
+            double4 __builtin_ia32_vperm2f128_pd256(double4, double4, byte);
+
+        pragma (intrinsic, "llvm.x86.avx.vperm2f128.ps.256")
+            float8 __builtin_ia32_vperm2f128_ps256(float8, float8, byte);
+
+        pragma (intrinsic, "llvm.x86.avx.vperm2f128.si.256")
+            int8 __builtin_ia32_vperm2f128_si256(int8, int8, byte);
+
+        pragma (intrinsic, "llvm.x86.avx.blend.pd.256")
+            double4 __builtin_ia32_blendpd256(double4, double4, int);
+
+        pragma (intrinsic, "llvm.x86.avx.blend.ps.256")
+            float8 __builtin_ia32_blendps256(float8, float8, int);
+
+        pragma (intrinsic, "llvm.x86.avx.blendv.pd.256")
+            double4 __builtin_ia32_blendvpd256(double4, double4, double4);
+
+        pragma (intrinsic, "llvm.x86.avx.blendv.ps.256")
+            float8 __builtin_ia32_blendvps256(float8, float8, float8);
+
+        pragma (intrinsic, "llvm.x86.avx.dp.ps.256")
+            float8 __builtin_ia32_dpps256(float8, float8, int);
+
+        pragma (intrinsic, "llvm.x86.avx.cmp.pd.256")
+            double4 __builtin_ia32_cmppd256(double4, double4, byte);
+
+        pragma (intrinsic, "llvm.x86.avx.cmp.ps.256")
+            float8 __builtin_ia32_cmpps256(float8, float8, byte);
+
+        pragma (intrinsic, "llvm.x86.avx.vextractf128.pd.256")
+            double2 __builtin_ia32_vextractf128_pd256(double4, byte);
+
+        pragma (intrinsic, "llvm.x86.avx.vextractf128.ps.256")
+            float4 __builtin_ia32_vextractf128_ps256(float8, byte);
+
+        pragma (intrinsic, "llvm.x86.avx.vextractf128.si.256")
+            int4 __builtin_ia32_vextractf128_si256(int8, byte);
+
+        pragma (intrinsic, "llvm.x86.avx.vinsertf128.pd.256")
+            double4 __builtin_ia32_vinsertf128_pd256(double4, double2, byte);
+
+        pragma (intrinsic, "llvm.x86.avx.vinsertf128.ps.256")
+            float8 __builtin_ia32_vinsertf128_ps256(float8, float4, byte);
+
+        pragma (intrinsic, "llvm.x86.avx.vinsertf128.si.256")
+            int8 __builtin_ia32_vinsertf128_si256(int8, int4, byte);
+
+        pragma (intrinsic, "llvm.x86.avx.cvtdq2.pd.256")
+            double4 __builtin_ia32_cvtdq2pd256(int4);
+
+        pragma (intrinsic, "llvm.x86.avx.cvtdq2.ps.256")
+            float8 __builtin_ia32_cvtdq2ps256(int8);
+
+        pragma (intrinsic, "llvm.x86.avx.cvt.pd2.ps.256")
+            float4 __builtin_ia32_cvtpd2ps256(double4);
+
+        pragma (intrinsic, "llvm.x86.avx.cvt.ps2dq.256")
+            int8 __builtin_ia32_cvtps2dq256(float8);
+
+        pragma (intrinsic, "llvm.x86.avx.cvt.ps2.pd.256")
+            double4 __builtin_ia32_cvtps2pd256(float4);
+
+        pragma (intrinsic, "llvm.x86.avx.cvtt.pd2dq.256")
+            int4 __builtin_ia32_cvttpd2dq256(double4);
+
+        pragma (intrinsic, "llvm.x86.avx.cvt.pd2dq.256")
+            int4 __builtin_ia32_cvtpd2dq256(double4);
+
+        pragma (intrinsic, "llvm.x86.avx.cvtt.ps2dq.256")
+            int8 __builtin_ia32_cvttps2dq256(float8);
+
+        pragma (intrinsic, "llvm.x86.avx.vtestz.pd")
+            int __builtin_ia32_vtestzpd(double2, double2);
+
+        pragma (intrinsic, "llvm.x86.avx.vtestc.pd")
+            int __builtin_ia32_vtestcpd(double2, double2);
+
+        pragma (intrinsic, "llvm.x86.avx.vtestnzc.pd")
+            int __builtin_ia32_vtestnzcpd(double2, double2);
+
+        pragma (intrinsic, "llvm.x86.avx.vtestz.ps")
+            int __builtin_ia32_vtestzps(float4, float4);
+
+        pragma (intrinsic, "llvm.x86.avx.vtestc.ps")
+            int __builtin_ia32_vtestcps(float4, float4);
+
+        pragma (intrinsic, "llvm.x86.avx.vtestnzc.ps")
+            int __builtin_ia32_vtestnzcps(float4, float4);
+
+        pragma (intrinsic, "llvm.x86.avx.vtestz.pd.256")
+            int __builtin_ia32_vtestzpd256(double4, double4);
+
+        pragma (intrinsic, "llvm.x86.avx.vtestc.pd.256")
+            int __builtin_ia32_vtestcpd256(double4, double4);
+
+        pragma (intrinsic, "llvm.x86.avx.vtestnzc.pd.256")
+            int __builtin_ia32_vtestnzcpd256(double4, double4);
+
+        pragma (intrinsic, "llvm.x86.avx.vtestz.ps.256")
+            int __builtin_ia32_vtestzps256(float8, float8);
+
+        pragma (intrinsic, "llvm.x86.avx.vtestc.ps.256")
+            int __builtin_ia32_vtestcps256(float8, float8);
+
+        pragma (intrinsic, "llvm.x86.avx.vtestnzc.ps.256")
+            int __builtin_ia32_vtestnzcps256(float8, float8);
+
+        pragma (intrinsic, "llvm.x86.avx.ptestz.256")
+            int __builtin_ia32_ptestz256(long4, long4);
+
+        pragma (intrinsic, "llvm.x86.avx.ptestc.256")
+            int __builtin_ia32_ptestc256(long4, long4);
+
+        pragma (intrinsic, "llvm.x86.avx.ptestnzc.256")
+            int __builtin_ia32_ptestnzc256(long4, long4);
+
+        pragma (intrinsic, "llvm.x86.avx.movmsk.pd.256")
+            int __builtin_ia32_movmskpd256(double4);
+
+        pragma (intrinsic, "llvm.x86.avx.movmsk.ps.256")
+            int __builtin_ia32_movmskps256(float8);
+
+        pragma (intrinsic, "llvm.x86.avx.vzeroall")
+            void __builtin_ia32_vzeroall();
+
+        pragma (intrinsic, "llvm.x86.avx.vzeroupper")
+            void __builtin_ia32_vzeroupper();
+
+        pragma (intrinsic, "llvm.x86.avx.vbroadcast.ss")
+            float4 __builtin_ia32_vbroadcastss(void*);
+
+        pragma (intrinsic, "llvm.x86.avx.vbroadcast.sd.256")
+            double4 __builtin_ia32_vbroadcastsd256(void*);
+
+        pragma (intrinsic, "llvm.x86.avx.vbroadcast.ss.256")
+            float8 __builtin_ia32_vbroadcastss256(void*);
+
+        pragma (intrinsic, "llvm.x86.avx.vbroadcastf128.pd.256")
+            double4 __builtin_ia32_vbroadcastf128_pd256(void*);
+
+        pragma (intrinsic, "llvm.x86.avx.vbroadcastf128.ps.256")
+            float8 __builtin_ia32_vbroadcastf128_ps256(void*);
+
+        pragma (intrinsic, "llvm.x86.avx.ldu.dq.256")
+            byte32 __builtin_ia32_lddqu256(void*);
+
+        pragma (intrinsic, "llvm.x86.avx.storeu.pd.256")
+            void __builtin_ia32_storeupd256(void*, double4);
+
+        pragma (intrinsic, "llvm.x86.avx.storeu.ps.256")
+            void __builtin_ia32_storeups256(void*, float8);
+
+        pragma (intrinsic, "llvm.x86.avx.storeu.dq.256")
+            void __builtin_ia32_storedqu256(void*, byte32);
+
+        pragma (intrinsic, "llvm.x86.avx.movnt.dq.256")
+            void __builtin_ia32_movntdq256(void*, long4);
+
+        pragma (intrinsic, "llvm.x86.avx.movnt.pd.256")
+            void __builtin_ia32_movntpd256(void*, double4);
+
+        pragma (intrinsic, "llvm.x86.avx.movnt.ps.256")
+            void __builtin_ia32_movntps256(void*, float8);
+
+        pragma (intrinsic, "llvm.x86.avx.maskload.pd")
+            double2 __builtin_ia32_maskloadpd(void*, double2);
+
+        pragma (intrinsic, "llvm.x86.avx.maskload.ps")
+            float4 __builtin_ia32_maskloadps(void*, float4);
+
+        pragma (intrinsic, "llvm.x86.avx.maskload.pd.256")
+            double4 __builtin_ia32_maskloadpd256(void*, double4);
+
+        pragma (intrinsic, "llvm.x86.avx.maskload.ps.256")
+            float8 __builtin_ia32_maskloadps256(void*, float8);
+
+        pragma (intrinsic, "llvm.x86.avx.maskstore.pd")
+            void __builtin_ia32_maskstorepd(void*, double2, double2);
+
+        pragma (intrinsic, "llvm.x86.avx.maskstore.ps")
+            void __builtin_ia32_maskstoreps(void*, float4, float4);
+
+        pragma (intrinsic, "llvm.x86.avx.maskstore.pd.256")
+            void __builtin_ia32_maskstorepd256(void*, double4, double4);
+
+        pragma (intrinsic, "llvm.x86.avx.maskstore.ps.256")
+            void __builtin_ia32_maskstoreps256(void*, float8, float8);
+
+        pragma (intrinsic, "llvm.x86.avx2.padds.b")
+            byte32 __builtin_ia32_paddsb256(byte32, byte32);
+
+        pragma (intrinsic, "llvm.x86.avx2.padds.w")
+            short16 __builtin_ia32_paddsw256(short16, short16);
+
+        pragma (intrinsic, "llvm.x86.avx2.paddus.b")
+            byte32 __builtin_ia32_paddusb256(byte32, byte32);
+
+        pragma (intrinsic, "llvm.x86.avx2.paddus.w")
+            short16 __builtin_ia32_paddusw256(short16, short16);
+
+        pragma (intrinsic, "llvm.x86.avx2.psubs.b")
+            byte32 __builtin_ia32_psubsb256(byte32, byte32);
+
+        pragma (intrinsic, "llvm.x86.avx2.psubs.w")
+            short16 __builtin_ia32_psubsw256(short16, short16);
+
+        pragma (intrinsic, "llvm.x86.avx2.psubus.b")
+            byte32 __builtin_ia32_psubusb256(byte32, byte32);
+
+        pragma (intrinsic, "llvm.x86.avx2.psubus.w")
+            short16 __builtin_ia32_psubusw256(short16, short16);
+
+        pragma (intrinsic, "llvm.x86.avx2.pmulhu.w")
+            short16 __builtin_ia32_pmulhuw256(short16, short16);
+
+        pragma (intrinsic, "llvm.x86.avx2.pmulh.w")
+            short16 __builtin_ia32_pmulhw256(short16, short16);
+
+        pragma (intrinsic, "llvm.x86.avx2.pmulu.dq")
+            long4 __builtin_ia32_pmuludq256(int8, int8);
+
+        pragma (intrinsic, "llvm.x86.avx2.pmul.dq")
+            long4 __builtin_ia32_pmuldq256(int8, int8);
+
+        pragma (intrinsic, "llvm.x86.avx2.pmadd.wd")
+            int8 __builtin_ia32_pmaddwd256(short16, short16);
+
+        pragma (intrinsic, "llvm.x86.avx2.pavg.b")
+            byte32 __builtin_ia32_pavgb256(byte32, byte32);
+
+        pragma (intrinsic, "llvm.x86.avx2.pavg.w")
+            short16 __builtin_ia32_pavgw256(short16, short16);
+
+        pragma (intrinsic, "llvm.x86.avx2.psad.bw")
+            long4 __builtin_ia32_psadbw256(byte32, byte32);
+
+        pragma (intrinsic, "llvm.x86.avx2.pmaxu.b")
+            byte32 __builtin_ia32_pmaxub256(byte32, byte32);
+
+        pragma (intrinsic, "llvm.x86.avx2.pmaxu.w")
+            short16 __builtin_ia32_pmaxuw256(short16, short16);
+
+        pragma (intrinsic, "llvm.x86.avx2.pmaxu.d")
+            int8 __builtin_ia32_pmaxud256(int8, int8);
+
+        pragma (intrinsic, "llvm.x86.avx2.pmaxs.b")
+            byte32 __builtin_ia32_pmaxsb256(byte32, byte32);
+
+        pragma (intrinsic, "llvm.x86.avx2.pmaxs.w")
+            short16 __builtin_ia32_pmaxsw256(short16, short16);
+
+        pragma (intrinsic, "llvm.x86.avx2.pmaxs.d")
+            int8 __builtin_ia32_pmaxsd256(int8, int8);
+
+        pragma (intrinsic, "llvm.x86.avx2.pminu.b")
+            byte32 __builtin_ia32_pminub256(byte32, byte32);
+
+        pragma (intrinsic, "llvm.x86.avx2.pminu.w")
+            short16 __builtin_ia32_pminuw256(short16, short16);
+
+        pragma (intrinsic, "llvm.x86.avx2.pminu.d")
+            int8 __builtin_ia32_pminud256(int8, int8);
+
+        pragma (intrinsic, "llvm.x86.avx2.pmins.b")
+            byte32 __builtin_ia32_pminsb256(byte32, byte32);
+
+        pragma (intrinsic, "llvm.x86.avx2.pmins.w")
+            short16 __builtin_ia32_pminsw256(short16, short16);
+
+        pragma (intrinsic, "llvm.x86.avx2.pmins.d")
+            int8 __builtin_ia32_pminsd256(int8, int8);
+
+        pragma (intrinsic, "llvm.x86.avx2.psll.w")
+            short16 __builtin_ia32_psllw256(short16, short8);
+
+        pragma (intrinsic, "llvm.x86.avx2.psll.d")
+            int8 __builtin_ia32_pslld256(int8, int4);
+
+        pragma (intrinsic, "llvm.x86.avx2.psll.q")
+            long4 __builtin_ia32_psllq256(long4, long2);
+
+        pragma (intrinsic, "llvm.x86.avx2.psrl.w")
+            short16 __builtin_ia32_psrlw256(short16, short8);
+
+        pragma (intrinsic, "llvm.x86.avx2.psrl.d")
+            int8 __builtin_ia32_psrld256(int8, int4);
+
+        pragma (intrinsic, "llvm.x86.avx2.psrl.q")
+            long4 __builtin_ia32_psrlq256(long4, long2);
+
+        pragma (intrinsic, "llvm.x86.avx2.psra.w")
+            short16 __builtin_ia32_psraw256(short16, short8);
+
+        pragma (intrinsic, "llvm.x86.avx2.psra.d")
+            int8 __builtin_ia32_psrad256(int8, int4);
+
+        pragma (intrinsic, "llvm.x86.avx2.pslli.w")
+            short16 __builtin_ia32_psllwi256(short16, int);
+
+        pragma (intrinsic, "llvm.x86.avx2.pslli.d")
+            int8 __builtin_ia32_pslldi256(int8, int);
+
+        pragma (intrinsic, "llvm.x86.avx2.pslli.q")
+            long4 __builtin_ia32_psllqi256(long4, int);
+
+        pragma (intrinsic, "llvm.x86.avx2.psrli.w")
+            short16 __builtin_ia32_psrlwi256(short16, int);
+
+        pragma (intrinsic, "llvm.x86.avx2.psrli.d")
+            int8 __builtin_ia32_psrldi256(int8, int);
+
+        pragma (intrinsic, "llvm.x86.avx2.psrli.q")
+            long4 __builtin_ia32_psrlqi256(long4, int);
+
+        pragma (intrinsic, "llvm.x86.avx2.psrai.w")
+            short16 __builtin_ia32_psrawi256(short16, int);
+
+        pragma (intrinsic, "llvm.x86.avx2.psrai.d")
+            int8 __builtin_ia32_psradi256(int8, int);
+
+        pragma (intrinsic, "llvm.x86.avx2.psll.dq")
+            long4 __builtin_ia32_pslldqi256(long4, int);
+
+        pragma (intrinsic, "llvm.x86.avx2.psrl.dq")
+            long4 __builtin_ia32_psrldqi256(long4, int);
+
+        pragma (intrinsic, "llvm.x86.avx2.psll.dq.bs")
+            long4 __builtin_ia32_pslldqi256_byteshift(long4, int);
+
+        pragma (intrinsic, "llvm.x86.avx2.psrl.dq.bs")
+            long4 __builtin_ia32_psrldqi256_byteshift(long4, int);
+
+        pragma (intrinsic, "llvm.x86.avx2.packsswb")
+            byte32 __builtin_ia32_packsswb256(short16, short16);
+
+        pragma (intrinsic, "llvm.x86.avx2.packssdw")
+            short16 __builtin_ia32_packssdw256(int8, int8);
+
+        pragma (intrinsic, "llvm.x86.avx2.packuswb")
+            byte32 __builtin_ia32_packuswb256(short16, short16);
+
+        pragma (intrinsic, "llvm.x86.avx2.packusdw")
+            short16 __builtin_ia32_packusdw256(int8, int8);
+
+        pragma (intrinsic, "llvm.x86.avx2.pabs.b")
+            byte32 __builtin_ia32_pabsb256(byte32);
+
+        pragma (intrinsic, "llvm.x86.avx2.pabs.w")
+            short16 __builtin_ia32_pabsw256(short16);
+
+        pragma (intrinsic, "llvm.x86.avx2.pabs.d")
+            int8 __builtin_ia32_pabsd256(int8);
+
+        pragma (intrinsic, "llvm.x86.avx2.phadd.w")
+            short16 __builtin_ia32_phaddw256(short16, short16);
+
+        pragma (intrinsic, "llvm.x86.avx2.phadd.d")
+            int8 __builtin_ia32_phaddd256(int8, int8);
+
+        pragma (intrinsic, "llvm.x86.avx2.phadd.sw")
+            short16 __builtin_ia32_phaddsw256(short16, short16);
+
+        pragma (intrinsic, "llvm.x86.avx2.phsub.w")
+            short16 __builtin_ia32_phsubw256(short16, short16);
+
+        pragma (intrinsic, "llvm.x86.avx2.phsub.d")
+            int8 __builtin_ia32_phsubd256(int8, int8);
+
+        pragma (intrinsic, "llvm.x86.avx2.phsub.sw")
+            short16 __builtin_ia32_phsubsw256(short16, short16);
+
+        pragma (intrinsic, "llvm.x86.avx2.pmadd.ub.sw")
+            short16 __builtin_ia32_pmaddubsw256(byte32, byte32);
+
+        pragma (intrinsic, "llvm.x86.avx2.psign.b")
+            byte32 __builtin_ia32_psignb256(byte32, byte32);
+
+        pragma (intrinsic, "llvm.x86.avx2.psign.w")
+            short16 __builtin_ia32_psignw256(short16, short16);
+
+        pragma (intrinsic, "llvm.x86.avx2.psign.d")
+            int8 __builtin_ia32_psignd256(int8, int8);
+
+        pragma (intrinsic, "llvm.x86.avx2.pmul.hr.sw")
+            short16 __builtin_ia32_pmulhrsw256(short16, short16);
+
+        pragma (intrinsic, "llvm.x86.avx2.pmovsxbd")
+            int8 __builtin_ia32_pmovsxbd256(byte16);
+
+        pragma (intrinsic, "llvm.x86.avx2.pmovsxbq")
+            long4 __builtin_ia32_pmovsxbq256(byte16);
+
+        pragma (intrinsic, "llvm.x86.avx2.pmovsxbw")
+            short16 __builtin_ia32_pmovsxbw256(byte16);
+
+        pragma (intrinsic, "llvm.x86.avx2.pmovsxdq")
+            long4 __builtin_ia32_pmovsxdq256(int4);
+
+        pragma (intrinsic, "llvm.x86.avx2.pmovsxwd")
+            int8 __builtin_ia32_pmovsxwd256(short8);
+
+        pragma (intrinsic, "llvm.x86.avx2.pmovsxwq")
+            long4 __builtin_ia32_pmovsxwq256(short8);
+
+        pragma (intrinsic, "llvm.x86.avx2.pmovzxbd")
+            int8 __builtin_ia32_pmovzxbd256(byte16);
+
+        pragma (intrinsic, "llvm.x86.avx2.pmovzxbq")
+            long4 __builtin_ia32_pmovzxbq256(byte16);
+
+        pragma (intrinsic, "llvm.x86.avx2.pmovzxbw")
+            short16 __builtin_ia32_pmovzxbw256(byte16);
+
+        pragma (intrinsic, "llvm.x86.avx2.pmovzxdq")
+            long4 __builtin_ia32_pmovzxdq256(int4);
+
+        pragma (intrinsic, "llvm.x86.avx2.pmovzxwd")
+            int8 __builtin_ia32_pmovzxwd256(short8);
+
+        pragma (intrinsic, "llvm.x86.avx2.pmovzxwq")
+            long4 __builtin_ia32_pmovzxwq256(short8);
+
+        pragma (intrinsic, "llvm.x86.avx2.pblendvb")
+            byte32 __builtin_ia32_pblendvb256(byte32, byte32, byte32);
+
+        pragma (intrinsic, "llvm.x86.avx2.pblendw")
+            short16 __builtin_ia32_pblendw256(short16, short16, int);
+
+        pragma (intrinsic, "llvm.x86.avx2.pblendd.128")
+            int4 __builtin_ia32_pblendd128(int4, int4, int);
+
+        pragma (intrinsic, "llvm.x86.avx2.pblendd.256")
+            int8 __builtin_ia32_pblendd256(int8, int8, int);
+
+        pragma (intrinsic, "llvm.x86.avx2.vbroadcast.ss.ps")
+            float4 __builtin_ia32_vbroadcastss_ps(float4);
+
+        pragma (intrinsic, "llvm.x86.avx2.vbroadcast.sd.pd.256")
+            double4 __builtin_ia32_vbroadcastsd_pd256(double2);
+
+        pragma (intrinsic, "llvm.x86.avx2.vbroadcast.ss.ps.256")
+            float8 __builtin_ia32_vbroadcastss_ps256(float4);
+
+        pragma (intrinsic, "llvm.x86.avx2.vbroadcasti128")
+            long4 __builtin_ia32_vbroadcastsi256(void*);
+
+        pragma (intrinsic, "llvm.x86.avx2.pbroadcastb.128")
+            byte16 __builtin_ia32_pbroadcastb128(byte16);
+
+        pragma (intrinsic, "llvm.x86.avx2.pbroadcastb.256")
+            byte32 __builtin_ia32_pbroadcastb256(byte16);
+
+        pragma (intrinsic, "llvm.x86.avx2.pbroadcastw.128")
+            short8 __builtin_ia32_pbroadcastw128(short8);
+
+        pragma (intrinsic, "llvm.x86.avx2.pbroadcastw.256")
+            short16 __builtin_ia32_pbroadcastw256(short8);
+
+        pragma (intrinsic, "llvm.x86.avx2.pbroadcastd.128")
+            int4 __builtin_ia32_pbroadcastd128(int4);
+
+        pragma (intrinsic, "llvm.x86.avx2.pbroadcastd.256")
+            int8 __builtin_ia32_pbroadcastd256(int4);
+
+        pragma (intrinsic, "llvm.x86.avx2.pbroadcastq.128")
+            long2 __builtin_ia32_pbroadcastq128(long2);
+
+        pragma (intrinsic, "llvm.x86.avx2.pbroadcastq.256")
+            long4 __builtin_ia32_pbroadcastq256(long2);
+
+        pragma (intrinsic, "llvm.x86.avx2.permd")
+            int8 __builtin_ia32_permvarsi256(int8, int8);
+
+        pragma (intrinsic, "llvm.x86.avx2.permps")
+            float8 __builtin_ia32_permvarsf256(float8, float8);
+
+        pragma (intrinsic, "llvm.x86.avx2.vperm2i128")
+            long4 __builtin_ia32_permti256(long4, long4, byte);
+
+        pragma (intrinsic, "llvm.x86.avx2.vextracti128")
+            long2 __builtin_ia32_extract128i256(long4, byte);
+
+        pragma (intrinsic, "llvm.x86.avx2.vinserti128")
+            long4 __builtin_ia32_insert128i256(long4, long2, byte);
+
+        pragma (intrinsic, "llvm.x86.avx2.maskload.d")
+            int4 __builtin_ia32_maskloadd(void*, int4);
+
+        pragma (intrinsic, "llvm.x86.avx2.maskload.q")
+            long2 __builtin_ia32_maskloadq(void*, long2);
+
+        pragma (intrinsic, "llvm.x86.avx2.maskload.d.256")
+            int8 __builtin_ia32_maskloadd256(void*, int8);
+
+        pragma (intrinsic, "llvm.x86.avx2.maskload.q.256")
+            long4 __builtin_ia32_maskloadq256(void*, long4);
+
+        pragma (intrinsic, "llvm.x86.avx2.maskstore.d")
+            void __builtin_ia32_maskstored(void*, int4, int4);
+
+        pragma (intrinsic, "llvm.x86.avx2.maskstore.q")
+            void __builtin_ia32_maskstoreq(void*, long2, long2);
+
+        pragma (intrinsic, "llvm.x86.avx2.maskstore.d.256")
+            void __builtin_ia32_maskstored256(void*, int8, int8);
+
+        pragma (intrinsic, "llvm.x86.avx2.maskstore.q.256")
+            void __builtin_ia32_maskstoreq256(void*, long4, long4);
+
+        pragma (intrinsic, "llvm.x86.avx2.psllv.d")
+            int4 __builtin_ia32_psllv4si(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.avx2.psllv.d.256")
+            int8 __builtin_ia32_psllv8si(int8, int8);
+
+        pragma (intrinsic, "llvm.x86.avx2.psllv.q")
+            long2 __builtin_ia32_psllv2di(long2, long2);
+
+        pragma (intrinsic, "llvm.x86.avx2.psllv.q.256")
+            long4 __builtin_ia32_psllv4di(long4, long4);
+
+        pragma (intrinsic, "llvm.x86.avx2.psrlv.d")
+            int4 __builtin_ia32_psrlv4si(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.avx2.psrlv.d.256")
+            int8 __builtin_ia32_psrlv8si(int8, int8);
+
+        pragma (intrinsic, "llvm.x86.avx2.psrlv.q")
+            long2 __builtin_ia32_psrlv2di(long2, long2);
+
+        pragma (intrinsic, "llvm.x86.avx2.psrlv.q.256")
+            long4 __builtin_ia32_psrlv4di(long4, long4);
+
+        pragma (intrinsic, "llvm.x86.avx2.psrav.d")
+            int4 __builtin_ia32_psrav4si(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.avx2.psrav.d.256")
+            int8 __builtin_ia32_psrav8si(int8, int8);
+
+        pragma (intrinsic, "llvm.x86.avx2.pmovmskb")
+            int __builtin_ia32_pmovmskb256(byte32);
+
+        pragma (intrinsic, "llvm.x86.avx2.pshuf.b")
+            byte32 __builtin_ia32_pshufb256(byte32, byte32);
+
+        pragma (intrinsic, "llvm.x86.avx2.mpsadbw")
+            short16 __builtin_ia32_mpsadbw256(byte32, byte32, int);
+
+        pragma (intrinsic, "llvm.x86.avx2.movntdqa")
+            long4 __builtin_ia32_movntdqa256(void*);
+
+        pragma (intrinsic, "llvm.x86.fma4.vfmadd.ss")
+            float4 __builtin_ia32_vfmaddss(float4, float4, float4);
+
+        pragma (intrinsic, "llvm.x86.fma4.vfmadd.sd")
+            double2 __builtin_ia32_vfmaddsd(double2, double2, double2);
+
+        pragma (intrinsic, "llvm.x86.fma4.vfmadd.ps")
+            float4 __builtin_ia32_vfmaddps(float4, float4, float4);
+
+        pragma (intrinsic, "llvm.x86.fma4.vfmadd.pd")
+            double2 __builtin_ia32_vfmaddpd(double2, double2, double2);
+
+        pragma (intrinsic, "llvm.x86.fma4.vfmadd.ps.256")
+            float8 __builtin_ia32_vfmaddps256(float8, float8, float8);
+
+        pragma (intrinsic, "llvm.x86.fma4.vfmadd.pd.256")
+            double4 __builtin_ia32_vfmaddpd256(double4, double4, double4);
+
+        pragma (intrinsic, "llvm.x86.fma4.vfmsub.ss")
+            float4 __builtin_ia32_vfmsubss(float4, float4, float4);
+
+        pragma (intrinsic, "llvm.x86.fma4.vfmsub.sd")
+            double2 __builtin_ia32_vfmsubsd(double2, double2, double2);
+
+        pragma (intrinsic, "llvm.x86.fma4.vfmsub.ps")
+            float4 __builtin_ia32_vfmsubps(float4, float4, float4);
+
+        pragma (intrinsic, "llvm.x86.fma4.vfmsub.pd")
+            double2 __builtin_ia32_vfmsubpd(double2, double2, double2);
+
+        pragma (intrinsic, "llvm.x86.fma4.vfmsub.ps.256")
+            float8 __builtin_ia32_vfmsubps256(float8, float8, float8);
+
+        pragma (intrinsic, "llvm.x86.fma4.vfmsub.pd.256")
+            double4 __builtin_ia32_vfmsubpd256(double4, double4, double4);
+
+        pragma (intrinsic, "llvm.x86.fma4.vfnmadd.ss")
+            float4 __builtin_ia32_vfnmaddss(float4, float4, float4);
+
+        pragma (intrinsic, "llvm.x86.fma4.vfnmadd.sd")
+            double2 __builtin_ia32_vfnmaddsd(double2, double2, double2);
+
+        pragma (intrinsic, "llvm.x86.fma4.vfnmadd.ps")
+            float4 __builtin_ia32_vfnmaddps(float4, float4, float4);
+
+        pragma (intrinsic, "llvm.x86.fma4.vfnmadd.pd")
+            double2 __builtin_ia32_vfnmaddpd(double2, double2, double2);
+
+        pragma (intrinsic, "llvm.x86.fma4.vfnmadd.ps.256")
+            float8 __builtin_ia32_vfnmaddps256(float8, float8, float8);
+
+        pragma (intrinsic, "llvm.x86.fma4.vfnmadd.pd.256")
+            double4 __builtin_ia32_vfnmaddpd256(double4, double4, double4);
+
+        pragma (intrinsic, "llvm.x86.fma4.vfnmsub.ss")
+            float4 __builtin_ia32_vfnmsubss(float4, float4, float4);
+
+        pragma (intrinsic, "llvm.x86.fma4.vfnmsub.sd")
+            double2 __builtin_ia32_vfnmsubsd(double2, double2, double2);
+
+        pragma (intrinsic, "llvm.x86.fma4.vfnmsub.ps")
+            float4 __builtin_ia32_vfnmsubps(float4, float4, float4);
+
+        pragma (intrinsic, "llvm.x86.fma4.vfnmsub.pd")
+            double2 __builtin_ia32_vfnmsubpd(double2, double2, double2);
+
+        pragma (intrinsic, "llvm.x86.fma4.vfnmsub.ps.256")
+            float8 __builtin_ia32_vfnmsubps256(float8, float8, float8);
+
+        pragma (intrinsic, "llvm.x86.fma4.vfnmsub.pd.256")
+            double4 __builtin_ia32_vfnmsubpd256(double4, double4, double4);
+
+        pragma (intrinsic, "llvm.x86.fma4.vfmaddsub.ps")
+            float4 __builtin_ia32_vfmaddsubps(float4, float4, float4);
+
+        pragma (intrinsic, "llvm.x86.fma4.vfmaddsub.pd")
+            double2 __builtin_ia32_vfmaddsubpd(double2, double2, double2);
+
+        pragma (intrinsic, "llvm.x86.fma4.vfmaddsub.ps.256")
+            float8 __builtin_ia32_vfmaddsubps256(float8, float8, float8);
+
+        pragma (intrinsic, "llvm.x86.fma4.vfmaddsub.pd.256")
+            double4 __builtin_ia32_vfmaddsubpd256(double4, double4, double4);
+
+        pragma (intrinsic, "llvm.x86.fma4.vfmsubadd.ps")
+            float4 __builtin_ia32_vfmsubaddps(float4, float4, float4);
+
+        pragma (intrinsic, "llvm.x86.fma4.vfmsubadd.pd")
+            double2 __builtin_ia32_vfmsubaddpd(double2, double2, double2);
+
+        pragma (intrinsic, "llvm.x86.fma4.vfmsubadd.ps.256")
+            float8 __builtin_ia32_vfmsubaddps256(float8, float8, float8);
+
+        pragma (intrinsic, "llvm.x86.fma4.vfmsubadd.pd.256")
+            double4 __builtin_ia32_vfmsubaddpd256(double4, double4, double4);
+
+        pragma (intrinsic, "llvm.x86.xop.vpermil2pd")
+            double2 __builtin_ia32_vpermil2pd(double2, double2, double2, byte);
+
+        pragma (intrinsic, "llvm.x86.xop.vpermil2pd.256")
+            double4 __builtin_ia32_vpermil2pd256(double4, double4, double4, byte);
+
+        pragma (intrinsic, "llvm.x86.xop.vpermil2ps")
+            float4 __builtin_ia32_vpermil2ps(float4, float4, float4, byte);
+
+        pragma (intrinsic, "llvm.x86.xop.vpermil2ps.256")
+            float8 __builtin_ia32_vpermil2ps256(float8, float8, float8, byte);
+
+        pragma (intrinsic, "llvm.x86.xop.vfrcz.pd")
+            double2 __builtin_ia32_vfrczpd(double2);
+
+        pragma (intrinsic, "llvm.x86.xop.vfrcz.ps")
+            float4 __builtin_ia32_vfrczps(float4);
+
+        pragma (intrinsic, "llvm.x86.xop.vfrcz.sd")
+            double2 __builtin_ia32_vfrczsd(double2, double2);
+
+        pragma (intrinsic, "llvm.x86.xop.vfrcz.ss")
+            float4 __builtin_ia32_vfrczss(float4, float4);
+
+        pragma (intrinsic, "llvm.x86.xop.vfrcz.pd.256")
+            double4 __builtin_ia32_vfrczpd256(double4);
+
+        pragma (intrinsic, "llvm.x86.xop.vfrcz.ps.256")
+            float8 __builtin_ia32_vfrczps256(float8);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcmov")
+            long2 __builtin_ia32_vpcmov(long2, long2, long2);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcmov.256")
+            long4 __builtin_ia32_vpcmov_256(long4, long4, long4);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomeqb")
+            byte16 __builtin_ia32_vpcomeqb(byte16, byte16);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomeqw")
+            short8 __builtin_ia32_vpcomeqw(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomeqd")
+            int4 __builtin_ia32_vpcomeqd(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomeqq")
+            long2 __builtin_ia32_vpcomeqq(long2, long2);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomequb")
+            byte16 __builtin_ia32_vpcomequb(byte16, byte16);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomequd")
+            int4 __builtin_ia32_vpcomequd(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomequq")
+            long2 __builtin_ia32_vpcomequq(long2, long2);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomequw")
+            short8 __builtin_ia32_vpcomequw(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomfalseb")
+            byte16 __builtin_ia32_vpcomfalseb(byte16, byte16);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomfalsed")
+            int4 __builtin_ia32_vpcomfalsed(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomfalseq")
+            long2 __builtin_ia32_vpcomfalseq(long2, long2);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomfalseub")
+            byte16 __builtin_ia32_vpcomfalseub(byte16, byte16);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomfalseud")
+            int4 __builtin_ia32_vpcomfalseud(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomfalseuq")
+            long2 __builtin_ia32_vpcomfalseuq(long2, long2);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomfalseuw")
+            short8 __builtin_ia32_vpcomfalseuw(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomfalsew")
+            short8 __builtin_ia32_vpcomfalsew(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomgeb")
+            byte16 __builtin_ia32_vpcomgeb(byte16, byte16);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomged")
+            int4 __builtin_ia32_vpcomged(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomgeq")
+            long2 __builtin_ia32_vpcomgeq(long2, long2);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomgeub")
+            byte16 __builtin_ia32_vpcomgeub(byte16, byte16);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomgeud")
+            int4 __builtin_ia32_vpcomgeud(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomgeuq")
+            long2 __builtin_ia32_vpcomgeuq(long2, long2);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomgeuw")
+            short8 __builtin_ia32_vpcomgeuw(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomgew")
+            short8 __builtin_ia32_vpcomgew(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomgtb")
+            byte16 __builtin_ia32_vpcomgtb(byte16, byte16);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomgtd")
+            int4 __builtin_ia32_vpcomgtd(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomgtq")
+            long2 __builtin_ia32_vpcomgtq(long2, long2);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomgtub")
+            byte16 __builtin_ia32_vpcomgtub(byte16, byte16);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomgtud")
+            int4 __builtin_ia32_vpcomgtud(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomgtuq")
+            long2 __builtin_ia32_vpcomgtuq(long2, long2);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomgtuw")
+            short8 __builtin_ia32_vpcomgtuw(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomgtw")
+            short8 __builtin_ia32_vpcomgtw(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomleb")
+            byte16 __builtin_ia32_vpcomleb(byte16, byte16);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomled")
+            int4 __builtin_ia32_vpcomled(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomleq")
+            long2 __builtin_ia32_vpcomleq(long2, long2);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomleub")
+            byte16 __builtin_ia32_vpcomleub(byte16, byte16);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomleud")
+            int4 __builtin_ia32_vpcomleud(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomleuq")
+            long2 __builtin_ia32_vpcomleuq(long2, long2);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomleuw")
+            short8 __builtin_ia32_vpcomleuw(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomlew")
+            short8 __builtin_ia32_vpcomlew(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomltb")
+            byte16 __builtin_ia32_vpcomltb(byte16, byte16);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomltd")
+            int4 __builtin_ia32_vpcomltd(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomltq")
+            long2 __builtin_ia32_vpcomltq(long2, long2);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomltub")
+            byte16 __builtin_ia32_vpcomltub(byte16, byte16);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomltud")
+            int4 __builtin_ia32_vpcomltud(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomltuq")
+            long2 __builtin_ia32_vpcomltuq(long2, long2);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomltuw")
+            short8 __builtin_ia32_vpcomltuw(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomltw")
+            short8 __builtin_ia32_vpcomltw(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomneb")
+            byte16 __builtin_ia32_vpcomneb(byte16, byte16);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomned")
+            int4 __builtin_ia32_vpcomned(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomneq")
+            long2 __builtin_ia32_vpcomneq(long2, long2);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomneub")
+            byte16 __builtin_ia32_vpcomneub(byte16, byte16);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomneud")
+            int4 __builtin_ia32_vpcomneud(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomneuq")
+            long2 __builtin_ia32_vpcomneuq(long2, long2);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomneuw")
+            short8 __builtin_ia32_vpcomneuw(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomnew")
+            short8 __builtin_ia32_vpcomnew(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomtrueb")
+            byte16 __builtin_ia32_vpcomtrueb(byte16, byte16);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomtrued")
+            int4 __builtin_ia32_vpcomtrued(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomtrueq")
+            long2 __builtin_ia32_vpcomtrueq(long2, long2);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomtrueub")
+            byte16 __builtin_ia32_vpcomtrueub(byte16, byte16);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomtrueud")
+            int4 __builtin_ia32_vpcomtrueud(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomtrueuq")
+            long2 __builtin_ia32_vpcomtrueuq(long2, long2);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomtrueuw")
+            short8 __builtin_ia32_vpcomtrueuw(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.xop.vpcomtruew")
+            short8 __builtin_ia32_vpcomtruew(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.xop.vphaddbd")
+            int4 __builtin_ia32_vphaddbd(byte16);
+
+        pragma (intrinsic, "llvm.x86.xop.vphaddbq")
+            long2 __builtin_ia32_vphaddbq(byte16);
+
+        pragma (intrinsic, "llvm.x86.xop.vphaddbw")
+            short8 __builtin_ia32_vphaddbw(byte16);
+
+        pragma (intrinsic, "llvm.x86.xop.vphadddq")
+            long2 __builtin_ia32_vphadddq(int4);
+
+        pragma (intrinsic, "llvm.x86.xop.vphaddubd")
+            int4 __builtin_ia32_vphaddubd(byte16);
+
+        pragma (intrinsic, "llvm.x86.xop.vphaddubq")
+            long2 __builtin_ia32_vphaddubq(byte16);
+
+        pragma (intrinsic, "llvm.x86.xop.vphaddubw")
+            short8 __builtin_ia32_vphaddubw(byte16);
+
+        pragma (intrinsic, "llvm.x86.xop.vphaddudq")
+            long2 __builtin_ia32_vphaddudq(int4);
+
+        pragma (intrinsic, "llvm.x86.xop.vphadduwd")
+            int4 __builtin_ia32_vphadduwd(short8);
+
+        pragma (intrinsic, "llvm.x86.xop.vphadduwq")
+            long2 __builtin_ia32_vphadduwq(short8);
+
+        pragma (intrinsic, "llvm.x86.xop.vphaddwd")
+            int4 __builtin_ia32_vphaddwd(short8);
+
+        pragma (intrinsic, "llvm.x86.xop.vphaddwq")
+            long2 __builtin_ia32_vphaddwq(short8);
+
+        pragma (intrinsic, "llvm.x86.xop.vphsubbw")
+            short8 __builtin_ia32_vphsubbw(byte16);
+
+        pragma (intrinsic, "llvm.x86.xop.vphsubdq")
+            long2 __builtin_ia32_vphsubdq(int4);
+
+        pragma (intrinsic, "llvm.x86.xop.vphsubwd")
+            int4 __builtin_ia32_vphsubwd(short8);
+
+        pragma (intrinsic, "llvm.x86.xop.vpmacsdd")
+            int4 __builtin_ia32_vpmacsdd(int4, int4, int4);
+
+        pragma (intrinsic, "llvm.x86.xop.vpmacsdqh")
+            long2 __builtin_ia32_vpmacsdqh(int4, int4, long2);
+
+        pragma (intrinsic, "llvm.x86.xop.vpmacsdql")
+            long2 __builtin_ia32_vpmacsdql(int4, int4, long2);
+
+        pragma (intrinsic, "llvm.x86.xop.vpmacssdd")
+            int4 __builtin_ia32_vpmacssdd(int4, int4, int4);
+
+        pragma (intrinsic, "llvm.x86.xop.vpmacssdqh")
+            long2 __builtin_ia32_vpmacssdqh(int4, int4, long2);
+
+        pragma (intrinsic, "llvm.x86.xop.vpmacssdql")
+            long2 __builtin_ia32_vpmacssdql(int4, int4, long2);
+
+        pragma (intrinsic, "llvm.x86.xop.vpmacsswd")
+            int4 __builtin_ia32_vpmacsswd(short8, short8, int4);
+
+        pragma (intrinsic, "llvm.x86.xop.vpmacssww")
+            short8 __builtin_ia32_vpmacssww(short8, short8, short8);
+
+        pragma (intrinsic, "llvm.x86.xop.vpmacswd")
+            int4 __builtin_ia32_vpmacswd(short8, short8, int4);
+
+        pragma (intrinsic, "llvm.x86.xop.vpmacsww")
+            short8 __builtin_ia32_vpmacsww(short8, short8, short8);
+
+        pragma (intrinsic, "llvm.x86.xop.vpmadcsswd")
+            int4 __builtin_ia32_vpmadcsswd(short8, short8, int4);
+
+        pragma (intrinsic, "llvm.x86.xop.vpmadcswd")
+            int4 __builtin_ia32_vpmadcswd(short8, short8, int4);
+
+        pragma (intrinsic, "llvm.x86.xop.vpperm")
+            byte16 __builtin_ia32_vpperm(byte16, byte16, byte16);
+
+        pragma (intrinsic, "llvm.x86.xop.vprotb")
+            byte16 __builtin_ia32_vprotb(byte16, byte16);
+
+        pragma (intrinsic, "llvm.x86.xop.vprotd")
+            int4 __builtin_ia32_vprotd(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.xop.vprotq")
+            long2 __builtin_ia32_vprotq(long2, long2);
+
+        pragma (intrinsic, "llvm.x86.xop.vprotw")
+            short8 __builtin_ia32_vprotw(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.xop.vpshab")
+            byte16 __builtin_ia32_vpshab(byte16, byte16);
+
+        pragma (intrinsic, "llvm.x86.xop.vpshad")
+            int4 __builtin_ia32_vpshad(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.xop.vpshaq")
+            long2 __builtin_ia32_vpshaq(long2, long2);
+
+        pragma (intrinsic, "llvm.x86.xop.vpshaw")
+            short8 __builtin_ia32_vpshaw(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.xop.vpshlb")
+            byte16 __builtin_ia32_vpshlb(byte16, byte16);
+
+        pragma (intrinsic, "llvm.x86.xop.vpshld")
+            int4 __builtin_ia32_vpshld(int4, int4);
+
+        pragma (intrinsic, "llvm.x86.xop.vpshlq")
+            long2 __builtin_ia32_vpshlq(long2, long2);
+
+        pragma (intrinsic, "llvm.x86.xop.vpshlw")
+            short8 __builtin_ia32_vpshlw(short8, short8);
+
+        pragma (intrinsic, "llvm.x86.mmx.emms")
+            void __builtin_ia32_emms();
+
+        pragma (intrinsic, "llvm.x86.mmx.femms")
+            void __builtin_ia32_femms();
+
+        pragma (intrinsic, "llvm.x86.bmi.bextr.32")
+            int __builtin_ia32_bextr_u32(int, int);
+
+        pragma (intrinsic, "llvm.x86.bmi.bextr.64")
+            long __builtin_ia32_bextr_u64(long, long);
+
+        pragma (intrinsic, "llvm.x86.bmi.bzhi.32")
+            int __builtin_ia32_bzhi_si(int, int);
+
+        pragma (intrinsic, "llvm.x86.bmi.bzhi.64")
+            long __builtin_ia32_bzhi_di(long, long);
+
+        pragma (intrinsic, "llvm.x86.bmi.pdep.32")
+            int __builtin_ia32_pdep_si(int, int);
+
+        pragma (intrinsic, "llvm.x86.bmi.pdep.64")
+            long __builtin_ia32_pdep_di(long, long);
+
+        pragma (intrinsic, "llvm.x86.bmi.pext.32")
+            int __builtin_ia32_pext_si(int, int);
+
+        pragma (intrinsic, "llvm.x86.bmi.pext.64")
+            long __builtin_ia32_pext_di(long, long);
+
+        pragma (intrinsic, "llvm.x86.rdfsbase.32")
+            int __builtin_ia32_rdfsbase32();
+
+        pragma (intrinsic, "llvm.x86.rdgsbase.32")
+            int __builtin_ia32_rdgsbase32();
+
+        pragma (intrinsic, "llvm.x86.rdfsbase.64")
+            long __builtin_ia32_rdfsbase64();
+
+        pragma (intrinsic, "llvm.x86.rdgsbase.64")
+            long __builtin_ia32_rdgsbase64();
+
+        pragma (intrinsic, "llvm.x86.wrfsbase.32")
+            void __builtin_ia32_wrfsbase32(int);
+
+        pragma (intrinsic, "llvm.x86.wrgsbase.32")
+            void __builtin_ia32_wrgsbase32(int);
+
+        pragma (intrinsic, "llvm.x86.wrfsbase.64")
+            void __builtin_ia32_wrfsbase64(long);
+
+        pragma (intrinsic, "llvm.x86.wrgsbase.64")
+            void __builtin_ia32_wrgsbase64(long);
+
+        pragma (intrinsic, "llvm.x86.vcvtph2ps.128")
+            float4 __builtin_ia32_vcvtph2ps(short8);
+
+        pragma (intrinsic, "llvm.x86.vcvtph2ps.256")
+            float8 __builtin_ia32_vcvtph2ps256(short8);
+
+        pragma (intrinsic, "llvm.x86.vcvtps2ph.128")
+            short8 __builtin_ia32_vcvtps2ph(float4, int);
+
+        pragma (intrinsic, "llvm.x86.vcvtps2ph.256")
+            short8 __builtin_ia32_vcvtps2ph256(float8, int);
+
+        alias __builtin_ia32_paddsb128 __builtin_ia32_paddsb;
+        alias __builtin_ia32_psubsb128 __builtin_ia32_psubsb;
+        alias __builtin_ia32_paddusb128 __builtin_ia32_paddusb;
+        alias __builtin_ia32_paddsw128 __builtin_ia32_paddsw;
+        alias __builtin_ia32_psubsw128 __builtin_ia32_psubsw;
+        alias __builtin_ia32_paddusw128 __builtin_ia32_paddusw;
     }
 
     template ldcFloatMaskLess(string type, string a, string b, bool includeEqual)
@@ -1938,7 +3609,7 @@ T madd(SIMDVer Ver = sseVer, T)(T v1, T v2, T v3)
 		{
 			return v1*v2 + v3;
 		}
-		else version(GNU)
+		else version(GNU_OR_LDC)    // TODO: declare the SSE5 builtins for LDC
 		{
 			static if(is(T == double2) && Ver == SIMDVer.SSE5)
 				return __builtin_ia32_fmaddpd(v1, v2, v3);
@@ -1986,7 +3657,7 @@ T msub(SIMDVer Ver = sseVer, T)(T v1, T v2, T v3)
 		{
 			return v1*v2 - v3;
 		}
-		else version(GNU)
+		else version(GNU_OR_LDC)    // TODO: declare the SSE5 builtins for LDC
 		{
 			static if(is(T == double2) && Ver == SIMDVer.SSE5)
 				return __builtin_ia32_fmsubpd(v1, v2, v3);
@@ -2023,7 +3694,7 @@ T nmadd(SIMDVer Ver = sseVer, T)(T v1, T v2, T v3)
 		{
 			return v3 - v1*v2;
 		}
-		else version(GNU)
+		else version(GNU_OR_LDC)    // TODO: declare the SSE5 builtins for LDC
 		{
 			static if(is(T == double2) && Ver == SIMDVer.SSE5)
 				return __builtin_ia32_fnmaddpd(v1, v2, v3);
@@ -2079,7 +3750,7 @@ T nmsub(SIMDVer Ver = sseVer, T)(T v1, T v2, T v3)
 		{
 			return -(v1*v2) - v3;
 		}
-		else version(GNU)
+		else version(GNU_OR_LDC)    // TODO: declare the SSE5 builtins for LDC
 		{
 			static if(is(T == double2) && Ver == SIMDVer.SSE5)
 				return __builtin_ia32_fnmsubpd(v1, v2, v3);
@@ -2116,7 +3787,7 @@ T min(SIMDVer Ver = sseVer, T)(T v1, T v2)
 		{
 			static assert(0, "TODO");
 		}
-		else version(GNU)
+		else version(GNU_OR_LDC)
 		{
 			static if(is(T == double2))
 				return __builtin_ia32_minpd(v1, v2);
@@ -2188,7 +3859,7 @@ T max(SIMDVer Ver = sseVer, T)(T v1, T v2)
 		{
 			static assert(0, "TODO");
 		}
-		else version(GNU)
+		else version(GNU_OR_LDC)
 		{
 			static if(is(T == double2))
 				return __builtin_ia32_maxpd(v1, v2);
@@ -2276,7 +3947,7 @@ T floor(SIMDVer Ver = sseVer, T)(T v)
 		{
 			static assert(0, "TODO");
 		}
-		else version(GNU)
+		else version(GNU_OR_LDC)
 		{
 			static if(is(T == double2))
 			{
@@ -2332,7 +4003,7 @@ T ceil(SIMDVer Ver = sseVer, T)(T v)
 		{
 			static assert(0, "TODO");
 		}
-		else version(GNU)
+		else version(GNU_OR_LDC)
 		{
 			static if(is(T == double2))
 			{
@@ -2371,7 +4042,7 @@ T round(SIMDVer Ver = sseVer, T)(T v)
 		{
 			static assert(0, "TODO");
 		}
-		else version(GNU)
+		else version(GNU_OR_LDC)
 		{
 			static if(is(T == double2))
 			{
@@ -2410,7 +4081,7 @@ T trunc(SIMDVer Ver = sseVer, T)(T v)
 		{
 			static assert(0, "TODO");
 		}
-		else version(GNU)
+		else version(GNU_OR_LDC)
 		{
 			static if(is(T == double2))
 			{
@@ -2490,7 +4161,7 @@ T rcp(SIMDVer Ver = sseVer, T)(T v)
 		{
 			static assert(0, "TODO");
 		}
-		else version(GNU)
+		else version(GNU_OR_LDC)
 		{
 			static if(is(T == double2))
 				return div!Ver(1.0, v);
@@ -2523,7 +4194,7 @@ T sqrt(SIMDVer Ver = sseVer, T)(T v)
 		{
 			static assert(0, "TODO");
 		}
-		else version(GNU)
+		else version(GNU_OR_LDC)
 		{
 			static if(is(T == double2))
 				return __builtin_ia32_sqrtpd(v);
@@ -2556,7 +4227,7 @@ T rsqrt(SIMDVer Ver = sseVer, T)(T v)
 		{
 			static assert(0, "TODO");
 		}
-		else version(GNU)
+		else version(GNU_OR_LDC)
 		{
 			static if(is(T == double2))
 				return rcp!Ver(sqrt!Ver(v));
@@ -2593,7 +4264,7 @@ T dot2(SIMDVer Ver = sseVer, T)(T v1, T v2)
 		{
 			static assert(0, "TODO");
 		}
-		else version(GNU)
+		else version(GNU_OR_LDC)
 		{
 			static if(is(T == double2))
 			{
@@ -2649,7 +4320,7 @@ T dot3(SIMDVer Ver = sseVer, T)(T v1, T v2)
 		{
 			static assert(0, "TODO");
 		}
-		else version(GNU)
+		else version(GNU_OR_LDC)
 		{
 			static if(is(T == float4))
 			{
@@ -2691,7 +4362,7 @@ T dot4(SIMDVer Ver = sseVer, T)(T v1, T v2)
 		{
 			static assert(0, "TODO");
 		}
-		else version(GNU)
+		else version(GNU_OR_LDC)
 		{
 			static if(is(T == float4))
 			{
@@ -2890,7 +4561,7 @@ T or(SIMDVer Ver = sseVer, T)(T v1, T v2)
 		{
 			static assert(0, "TODO");
 		}
-		else version(GNU)
+		else version(GNU_OR_LDC)
 		{
 			static if(is(T == double2))
 				return __builtin_ia32_orpd(v1, v2);
@@ -2925,7 +4596,7 @@ T and(SIMDVer Ver = sseVer, T)(T v1, T v2)
 		{
 			static assert(0, "TODO");
 		}
-		else version(GNU)
+		else version(GNU_OR_LDC)
 		{
 			static if(is(T == double2))
 				return __builtin_ia32_andpd(v1, v2);
@@ -2964,7 +4635,7 @@ T andNot(SIMDVer Ver = sseVer, T)(T v1, T v2)
 		{
 			static assert(0, "TODO");
 		}
-		else version(GNU)
+		else version(GNU_OR_LDC)
 		{
 			static if(is(T == double2))
 				return __builtin_ia32_andnpd(v2, v1);
@@ -2993,7 +4664,7 @@ T xor(SIMDVer Ver = sseVer, T)(T v1, T v2)
 		{
 			static assert(0, "TODO");
 		}
-		else version(GNU)
+		else version(GNU_OR_LDC)
 		{
 			static if(is(T == double2))
 				return __builtin_ia32_xorpd(v1, v2);
@@ -3030,7 +4701,7 @@ T shiftLeft(SIMDVer Ver = sseVer, T)(T v1, T v2)
 		{
 			static assert(0, "TODO");
 		}
-		else version(GNU)
+		else version(GNU_OR_LDC)
 		{
 			static if(is(T == long2) || is(T == ulong2))
 				return __builtin_ia32_psllq128(v1, v2);
@@ -3065,7 +4736,7 @@ T shiftLeftImmediate(size_t bits, SIMDVer Ver = sseVer, T)(T v)
 			{
 				static assert(0, "TODO");
 			}
-			else version(GNU)
+			else version(GNU_OR_LDC)
 			{
 				static if(is(T == long2) || is(T == ulong2))
 					return __builtin_ia32_psllqi128(v, bits);
@@ -3177,7 +4848,7 @@ T shiftBytesLeftImmediate(size_t bytes, SIMDVer Ver = sseVer, T)(T v)
 			{
 				static assert(0, "TODO");
 			}
-			else version(GNU)
+			else version(GNU_OR_LDC)
 			{
 				// little endian reads the bytes into the register in reverse, so we need to flip the operations
 				return __builtin_ia32_psrldqi128(v, bytes * 8); // TODO: *8? WAT?
@@ -3208,7 +4879,7 @@ T shiftBytesRightImmediate(size_t bytes, SIMDVer Ver = sseVer, T)(T v)
 			{
 				static assert(0, "TODO");
 			}
-			else version(GNU)
+			else version(GNU_OR_LDC)
 			{
 				// little endian reads the bytes into the register in reverse, so we need to flip the operations
 				return __builtin_ia32_pslldqi128(v, bytes * 8); // TODO: *8? WAT?
