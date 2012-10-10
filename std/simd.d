@@ -1,8 +1,9 @@
 module std.simd;
 
-pure:
+/*pure:
 nothrow:
-@safe:
+@safe:*/
+import std.stdio;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Version mess
@@ -4142,7 +4143,7 @@ T div(SIMDVer Ver = sseVer, T)(T v1, T v2)
 	{
 		return v1 / v2;
 	}
-	version(ARM)
+	else version(ARM)
 	{
 		return mul!Ver(v1, rcp!Ver(v2));
 	}
@@ -4596,7 +4597,7 @@ T and(SIMDVer Ver = sseVer, T)(T v1, T v2)
 		{
 			static assert(0, "TODO");
 		}
-		else version(GNU_OR_LDC)
+		else version(GNU)
 		{
 			static if(is(T == double2))
 				return __builtin_ia32_andpd(v1, v2);
@@ -4664,7 +4665,7 @@ T xor(SIMDVer Ver = sseVer, T)(T v1, T v2)
 		{
 			static assert(0, "TODO");
 		}
-		else version(GNU_OR_LDC)
+		else version(GNU)
 		{
 			static if(is(T == double2))
 				return __builtin_ia32_xorpd(v1, v2);
@@ -5152,6 +5153,15 @@ void16 maskEqual(SIMDVer Ver = sseVer, T)(T a, T b)
 			else
 				static assert(0, "Unsupported vector type: " ~ T.stringof);
 		}
+        else version(LDC)
+        {
+			static if(is(T == double2))
+				return __builtin_ia32_cmppd(a, b, 0);
+			else static if(is(T == float4))
+				return __builtin_ia32_cmpps(a, b, 0);
+			else
+				static assert(0, "Unsupported vector type: " ~ T.stringof);
+        }
 	}
 	else version(ARM)
 	{
@@ -5181,6 +5191,15 @@ void16 maskNotEqual(SIMDVer Ver = sseVer, T)(T a, T b)
 			else
 				return comp!Ver(cast(void16)maskEqual!Ver(a, b));
 		}
+        else version(LDC)
+        {
+			static if(is(T == double2))
+				return __builtin_ia32_cmppd(a, b, 4);
+			else static if(is(T == float4))
+				return __builtin_ia32_cmpps(a, b, 4);
+	        else
+                static assert(0, "Unsupported vector type: " ~ T.stringof);
+        }
 	}
 	else version(ARM)
 	{
