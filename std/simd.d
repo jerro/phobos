@@ -3,7 +3,6 @@ module std.simd;
 /*pure:
 nothrow:
 @safe:*/
-import std.stdio;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Version mess
@@ -140,7 +139,7 @@ version(LDC)
    
     version(X86_OR_X64)
     { 
-        import ldc.gccbuiltins;
+        import ldc.gccbuiltins_x86;
 
         alias __builtin_ia32_paddsb128 __builtin_ia32_paddsb;
         alias __builtin_ia32_psubsb128 __builtin_ia32_psubsb;
@@ -2759,12 +2758,12 @@ T normEst4(SIMDVer Ver = sseVer, T)(T v)
 ///////////////////////////////////////////////////////////////////////////////
 // Bitwise operations
 
-// unary compliment: ~v
+// unary complement: ~v
 T comp(SIMDVer Ver = sseVer, T)(T v)
 {
 	version(X86_OR_X64)
 	{
-		return ~v;
+		return cast(T) ~ cast(int4) v;
 	}
 	else version(ARM)
 	{
@@ -2785,7 +2784,7 @@ T or(SIMDVer Ver = sseVer, T)(T v1, T v2)
 		{
 			static assert(0, "TODO");
 		}
-		else version(GNU_OR_LDC)
+		else version(GNU)
 		{
 			static if(is(T == double2))
 				return __builtin_ia32_orpd(v1, v2);
@@ -2794,6 +2793,10 @@ T or(SIMDVer Ver = sseVer, T)(T v1, T v2)
 			else
 				return __builtin_ia32_por128(v1, v2);
 		}
+        else version(LDC)
+        {
+            return cast(T) (cast(int4) v1 | cast(int4) v2);
+        }
 	}
 	else version(ARM)
 	{
@@ -2859,7 +2862,7 @@ T andNot(SIMDVer Ver = sseVer, T)(T v1, T v2)
 		{
 			static assert(0, "TODO");
 		}
-		else version(GNU_OR_LDC)
+		else version(GNU)
 		{
 			static if(is(T == double2))
 				return __builtin_ia32_andnpd(v2, v1);
@@ -2868,6 +2871,10 @@ T andNot(SIMDVer Ver = sseVer, T)(T v1, T v2)
 			else
 				return __builtin_ia32_pandn128(v2, v1);
 		}
+        else version(LDC)
+        {
+            return cast(T)(cast(int4) v1 & ~cast(int4) v2); 
+        }
 	}
 	else version(ARM)
 	{
@@ -2930,9 +2937,9 @@ T shiftLeft(SIMDVer Ver = sseVer, T)(T v1, T v2)
 			static if(is(T == long2) || is(T == ulong2))
 				return __builtin_ia32_psllq128(v1, v2);
 			else static if(is(T == int4) || is(T == uint4))
-				return __builtin_ia32_psrld128(v1, v2);
+				return __builtin_ia32_pslld128(v1, v2);
 			else static if(is(T == short8) || is(T == ushort8))
-				return __builtin_ia32_psrlw128(v1, v2);
+				return __builtin_ia32_psllw128(v1, v2);
 			else
 				static assert(0, "Unsupported vector type: " ~ T.stringof);
 		}
@@ -2965,9 +2972,9 @@ T shiftLeftImmediate(size_t bits, SIMDVer Ver = sseVer, T)(T v)
 				static if(is(T == long2) || is(T == ulong2))
 					return __builtin_ia32_psllqi128(v, bits);
 				else static if(is(T == int4) || is(T == uint4))
-					return __builtin_ia32_psrldi128(v, bits);
+					return __builtin_ia32_pslldi128(v, bits);
 				else static if(is(T == short8) || is(T == ushort8))
-					return __builtin_ia32_psrlwi128(v, bits);
+					return __builtin_ia32_psllwi128(v, bits);
 				else
 					static assert(0, "Unsupported vector type: " ~ T.stringof);
 			}
