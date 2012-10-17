@@ -986,20 +986,22 @@ T swizzle(string swiz, SIMDVer Ver = sseVer, T)(T v)
 		else
 		{
 			// regular swizzle
-			bool bFound = false;
 			foreach(s; elements) // foreach swizzle naming convention
 			{
+                bool bFound = true;
 				foreach(i; 0..swizzleKey.length) // foreach char in swizzle string
 				{
+                    bool keyInS = false;
 					foreach(int j, c; s) // find the offset of the 
 					{
 						if(swizzleKey[i] == c)
 						{
-							bFound = true;
+							keyInS = true;
 							r[i] = j;
 							break;
 						}
 					}
+                    bFound = bFound && keyInS;
 				}
 
 				if(bFound)
@@ -1040,7 +1042,7 @@ T swizzle(string swiz, SIMDVer Ver = sseVer, T)(T v)
 	else static if(Elements == 8)
 		enum elementNames = ["01234567"];
 	else static if(Elements == 16)
-		enum elementNames = ["0123456789ABCDEF"];
+		enum elementNames = ["0123456789abcdef"];
 
 	// parse the swizzle string
 	enum int[Elements] elements = parseElements!(swiz, Elements)(elementNames);
