@@ -1481,86 +1481,101 @@ DemotionOf!T packSaturate(SIMDVer Ver = sseVer, T)(T v1, T v2)
 
 int4 toInt(SIMDVer Ver = sseVer, T)(T v)
 {
-	version(X86_OR_X64)
-	{
-		version(DigitalMars)
-		{
-			static assert(0, "TODO");
-		}
-		else version(GNU_OR_LDC)
-		{
-			static if(is(T == float4))
-				return __builtin_ia32_cvtps2dq(v);
-			else static if(is(T == double2))
-				return __builtin_ia32_cvtpd2dq(v); // TODO: z,w are undefined... should we repeat xy to zw?
-			else
-				static assert(0, "Unsupported vector type: " ~ T.stringof);
-		}
-	}
-	else version(ARM)
-	{
-		static assert(0, "TODO");
-	}
-	else
-	{
-		static assert(0, "Unsupported on this architecture");
-	}
+    static if(is(T == int4))
+        return v;
+    else
+    {
+        version(X86_OR_X64)
+        {
+            version(DigitalMars)
+            {
+                static assert(0, "TODO");
+            }
+            else version(GNU_OR_LDC)
+            {
+                static if(is(T == float4))
+                    return __builtin_ia32_cvtps2dq(v);
+                else static if(is(T == double2))
+                    return __builtin_ia32_cvtpd2dq(v); // TODO: z,w are undefined... should we repeat xy to zw?
+                else
+                    static assert(0, "Unsupported vector type: " ~ T.stringof);
+            }
+        }
+        else version(ARM)
+        {
+            static assert(0, "TODO");
+        }
+        else
+        {
+            static assert(0, "Unsupported on this architecture");
+        }
+    }
 }
 
 float4 toFloat(SIMDVer Ver = sseVer, T)(T v)
 {
-	version(X86_OR_X64)
-	{
-		version(DigitalMars)
-		{
-			static assert(0, "TODO");
-		}
-		else version(GNU_OR_LDC)
-		{
-			static if(is(T == int4))
-				return __builtin_ia32_cvtdq2ps(v);
-			else static if(is(T == double2))
-				return __builtin_ia32_cvtpd2ps(v); // TODO: z,w are undefined... should we repeat xy to zw?
-			else
-				static assert(0, "Unsupported vector type: " ~ T.stringof);
-		}
-	}
-	else version(ARM)
-	{
-		static assert(0, "TODO");
-	}
-	else
-	{
-		static assert(0, "Unsupported on this architecture");
-	}
+    static if(is(T == float4))
+        return v;
+    else
+    {
+        version(X86_OR_X64)
+        {
+            version(DigitalMars)
+            {
+                static assert(0, "TODO");
+            }
+            else version(GNU_OR_LDC)
+            {
+                static if(is(T == int4))
+                    return __builtin_ia32_cvtdq2ps(v);
+                else static if(is(T == double2))
+                    return __builtin_ia32_cvtpd2ps(v); // TODO: z,w are undefined... should we repeat xy to zw?
+                else
+                    static assert(0, "Unsupported vector type: " ~ T.stringof);
+            }
+        }
+        else version(ARM)
+        {
+            static assert(0, "TODO");
+        }
+        else
+        {
+            static assert(0, "Unsupported on this architecture");
+        }
+    }
 }
 
 double2 toDouble(SIMDVer Ver = sseVer, T)(T v)
 {
-	version(X86_OR_X64)
-	{
-		version(DigitalMars)
-		{
-			static assert(0, "TODO");
-		}
-		else version(GNU_OR_LDC)
-		{
-			static if(is(T == int4))
-				return __builtin_ia32_cvtdq2pd(v);
-			else static if(is(T == float4))
-				return __builtin_ia32_cvtps2pd(v);
-			else
-				static assert(0, "Unsupported vector type: " ~ T.stringof);
-		}
-	}
-	else version(ARM)
-	{
-		static assert(0, "TODO");
-	}
-	else
-	{
-		static assert(0, "Unsupported on this architecture");
-	}
+    static if(is(T == double2))
+        return v;
+    else
+    {
+        version(X86_OR_X64)
+        {
+            version(DigitalMars)
+            {
+                static assert(0, "TODO");
+            }
+            else version(GNU_OR_LDC)
+            {
+                static if(is(T == int4))
+                    return __builtin_ia32_cvtdq2pd(v);
+                else static if(is(T == float4))
+                    return __builtin_ia32_cvtps2pd(v);
+                else
+                    static assert(0, "Unsupported vector type: " ~ T.stringof);
+            }
+        }
+        else version(ARM)
+        {
+            static assert(0, "TODO");
+        }
+        else
+        {
+            static assert(0, "Unsupported on this architecture");
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
