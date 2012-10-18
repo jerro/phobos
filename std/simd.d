@@ -945,11 +945,26 @@ if(isVector!T)
 	}
 }
 
+// when this was defined inside swizzle, LDC was allocating an array at run
+// time for some reason.
+private template elementNames(int Elements)
+{
+	static if(Elements == 2)
+		enum elementNames = ["xy", "01"];
+	else static if(Elements == 4)
+		enum elementNames = ["xyzw", "rgba", "0123"];
+	else static if(Elements == 8)
+		enum elementNames = ["01234567"];
+	else static if(Elements == 16)
+		enum elementNames = ["0123456789abcdef"];
+}
+
 // swizzle a vector: r = swizzle!"ZZWX"(v); // r = v.zzwx
 T swizzle(string swiz, SIMDVer Ver = sseVer, T)(T v)
 {
+    
 	// parse the string into elements
-	int[N] parseElements(string swiz, size_t N)(string[] elements)
+	static int[N] parseElements(string swiz, size_t N)(string[] elements)
 	{
 		import std.string;
 		auto swizzleKey = toLower(swiz);
@@ -1011,7 +1026,7 @@ T swizzle(string swiz, SIMDVer Ver = sseVer, T)(T v)
 		return r;
 	}
 
-	bool isIdentity(size_t N)(int[N] elements)
+	static bool isIdentity(size_t N)(int[N] elements)
 	{
 		foreach(i, e; elements)
 		{
@@ -1021,7 +1036,7 @@ T swizzle(string swiz, SIMDVer Ver = sseVer, T)(T v)
 		return true;
 	}
 
-	bool isBroadcast(size_t N)(int[N] elements)
+	static bool isBroadcast(size_t N)(int[N] elements)
 	{
 		foreach(i; 1..N)
 		{
@@ -1035,17 +1050,8 @@ T swizzle(string swiz, SIMDVer Ver = sseVer, T)(T v)
 
 	static assert(swiz.length > 0 && swiz.length <= Elements, "Invalid number of components in swizzle string");
 
-	static if(Elements == 2)
-		enum elementNames = ["xy", "01"];
-	else static if(Elements == 4)
-		enum elementNames = ["xyzw", "rgba", "0123"];
-	else static if(Elements == 8)
-		enum elementNames = ["01234567"];
-	else static if(Elements == 16)
-		enum elementNames = ["0123456789abcdef"];
-
 	// parse the swizzle string
-	enum int[Elements] elements = parseElements!(swiz, Elements)(elementNames);
+	enum int[Elements] elements = parseElements!(swiz, Elements)(elementNames!Elements);
 
 	// early out if no actual swizzle
 	static if(isIdentity!Elements(elements))
