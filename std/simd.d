@@ -3,6 +3,7 @@ module std.simd;
 /*pure:
 nothrow:
 @safe:*/
+@trusted:
 
 ///////////////////////////////////////////////////////////////////////////////
 // Version mess
@@ -115,13 +116,13 @@ version(LDC)
     {
         enum llvmInstructions = `
             pragma(shufflevector)
-                `~v~` shufflevector(`~v~`, `~v~`, RepeatType!(int, `~v~`.init.length));
+                `~v~` shufflevector(`~v~`, `~v~`, RepeatType!(int, `~v~`.init.length)) nothrow pure @safe;
 
             pragma(insertelement)
-                `~v~` insertelement(`~v~`, typeof(`~v~`.init.ptr[0]), int);
+                `~v~` insertelement(`~v~`, typeof(`~v~`.init.ptr[0]), int) nothrow pure @safe;
 
             pragma(extractelement)
-                typeof(`~v~`.init.ptr[0]) extractelement(`~v~`, int);`;
+                typeof(`~v~`.init.ptr[0]) extractelement(`~v~`, int) nothrow pure @safe;`;
     } 
 
     mixin( 
@@ -138,16 +139,7 @@ version(LDC)
 
    
     version(X86_OR_X64)
-    { 
         import ldc.gccbuiltins_x86;
-
-        alias __builtin_ia32_paddsb128 __builtin_ia32_paddsb;
-        alias __builtin_ia32_psubsb128 __builtin_ia32_psubsb;
-        alias __builtin_ia32_paddusb128 __builtin_ia32_paddusb;
-        alias __builtin_ia32_paddsw128 __builtin_ia32_paddsw;
-        alias __builtin_ia32_psubsw128 __builtin_ia32_psubsw;
-        alias __builtin_ia32_paddusw128 __builtin_ia32_paddusw;
-    }
 
     template ldcFloatMaskLess(string type, string a, string b, bool includeEqual)
     {
@@ -456,13 +448,14 @@ private
 	/**** And some helpers for various architectures ****/
 	version(X86_OR_X64)
 	{
-		int shufMask(size_t N)(int[N] elements)
-		{
-			static if(N == 2)
-				return ((elements[0] & 1) << 0) | ((elements[1] & 1) << 1);
-			else static if(N == 4)
-				return ((elements[0] & 3) << 0) | ((elements[1] & 3) << 2) | ((elements[2] & 3) << 4) | ((elements[3] & 3) << 6);
-		}
+        template shufMask(alias elements)
+        {
+            static if(elements.length == 2)
+                enum shufMask = ((elements[0] & 1) << 0) | ((elements[1] & 1) << 1);
+            else static if(elements.length)
+                enum shufMask = ((elements[0] & 3) << 0) | ((elements[1] & 3) << 2) | ((elements[2] & 3) << 4) | ((elements[3] & 3) << 6);
+        }
+ 
 	}
 
 	version(ARM)
@@ -658,7 +651,7 @@ if(isVector!T && is(BaseType!T == S))
 }
 
 // store the vector to an unaligned address
-void storeUnaligned(SIMDVer Ver = sseVer, T, S)(T v, S* pV)
+void storeUnaligned(SIMDVer Ver = sseVer, T, S)(T v, S* pV) @trusted
 if(isVector!T && is(BaseType!T == S))
 {
 	version(X86_OR_X64)
@@ -1129,10 +1122,10 @@ T swizzle(string swiz, SIMDVer Ver = sseVer, T)(T v)
 				else
 				{
 					static if(is(T == double2))
-						return __builtin_ia32_shufpd(v, v, shufMask!Elements(elements)); // swizzle: YX
+						return __builtin_ia32_shufpd(v, v, shufMask!(elements)); // swizzle: YX
 					else static if(is64bitElement!(T)) // (u)long2
 						// use a 32bit integer shuffle for swizzle: YZ
-						return __builtin_ia32_pshufd(v, shufMask!4([elements[0]*2, elements[0]*2 + 1, elements[1]*2, elements[1]*2 + 1]));
+						return __builtin_ia32_pshufd(v, shufMask!([elements[0]*2, elements[0]*2 + 1, elements[1]*2, elements[1]*2 + 1]));
 					else static if(is(T == float4))
 					{
 						static if(elements == [0,0,2,2] && Ver >= SIMDVer.SSE3)
@@ -1140,10 +1133,10 @@ T swizzle(string swiz, SIMDVer Ver = sseVer, T)(T v)
 						else static if(elements == [1,1,3,3] && Ver >= SIMDVer.SSE3)
 							return __builtin_ia32_movshdup(v);
 						else
-							return __builtin_ia32_shufps(v, v, shufMask!Elements(elements));
+							return __builtin_ia32_shufps(v, v, shufMask!(elements));
 					}
 					else static if(is32bitElement!(T))
-						return __builtin_ia32_pshufd(v, shufMask!Elements(elements));
+						return __builtin_ia32_pshufd(v, shufMask!(elements));
 					else
 					{
 						// TODO: 16 and 8bit swizzles...
@@ -1736,13 +1729,13 @@ T addSaturate(SIMDVer Ver = sseVer, T)(T v1, T v2)
 		else version(GNU_OR_LDC)
 		{
 			static if(is(T == short8))
-				return __builtin_ia32_paddsw(v1, v2);
+				return __builtin_ia32_paddsw128(v1, v2);
 			else static if(is(T == ushort8))
-				return __builtin_ia32_paddusw(v1, v2);
+				return __builtin_ia32_paddusw128(v1, v2);
 			else static if(is(T == byte16))
-				return __builtin_ia32_paddsb(v1, v2);
+				return __builtin_ia32_paddsb128(v1, v2);
 			else static if(is(T == ubyte16))
-				return __builtin_ia32_paddusb(v1, v2);
+				return __builtin_ia32_paddusb128(v1, v2);
 			else
 				static assert(0, "Unsupported vector type: " ~ T.stringof);
 		}
@@ -1797,13 +1790,13 @@ T subSaturate(SIMDVer Ver = sseVer, T)(T v1, T v2)
 		else version(GNU_OR_LDC)
 		{
 			static if(is(T == short8))
-				return __builtin_ia32_psubsw(v1, v2);
+				return __builtin_ia32_psubsw128(v1, v2);
 			else static if(is(T == ushort8))
-				return __builtin_ia32_psubusw(v1, v2);
+				return __builtin_ia32_psubusw128(v1, v2);
 			else static if(is(T == byte16))
-				return __builtin_ia32_psubsb(v1, v2);
+				return __builtin_ia32_psubsb128(v1, v2);
 			else static if(is(T == ubyte16))
-				return __builtin_ia32_psubusb(v1, v2);
+				return __builtin_ia32_psubusb128(v1, v2);
 			else
 				static assert(0, "Unsupported vector type: " ~ T.stringof);
 		}
@@ -2515,7 +2508,7 @@ T dot2(SIMDVer Ver = sseVer, T)(T v1, T v2)
 			static if(is(T == double2))
 			{
 				static if(Ver >= SIMDVer.SSE41) // 1 op
-					return __builtin_ia32_dppd(v1, v2, 0x0F);
+					return __builtin_ia32_dppd(v1, v2, 0x33);
 				else static if(Ver >= SIMDVer.SSE3) // 2 ops
 				{
 					double2 t = v1 * v2;
@@ -3105,7 +3098,7 @@ T shiftBytesLeftImmediate(size_t bytes, SIMDVer Ver = sseVer, T)(T v)
 			else version(GNU_OR_LDC)
 			{
 				// little endian reads the bytes into the register in reverse, so we need to flip the operations
-				return __builtin_ia32_psrldqi128(v, bytes * 8); // TODO: *8? WAT?
+				return cast(T) __builtin_ia32_psrldqi128(cast(ubyte16) v, bytes * 8); // TODO: *8? WAT?
 			}
 		}
 		else version(ARM)
@@ -3136,7 +3129,7 @@ T shiftBytesRightImmediate(size_t bytes, SIMDVer Ver = sseVer, T)(T v)
 			else version(GNU_OR_LDC)
 			{
 				// little endian reads the bytes into the register in reverse, so we need to flip the operations
-				return __builtin_ia32_pslldqi128(v, bytes * 8); // TODO: *8? WAT?
+				return cast(T) __builtin_ia32_pslldqi128(v, cast(ubyte16) bytes * 8); // TODO: *8? WAT?
 			}
 		}
 		else version(ARM)
@@ -3732,14 +3725,14 @@ T transpose(SIMDVer Ver = sseVer, T)(T m)
 		{
 			static if(is(T == float4x4))
 			{
-				float4 b0 = __builtin_ia32_shufps(m.xRow, m.yRow, shufMask!4([0,1,0,1]));
-				float4 b1 = __builtin_ia32_shufps(m.zRow, m.wRow, shufMask!4([0,1,0,1]));
-				float4 b2 = __builtin_ia32_shufps(m.xRow, m.yRow, shufMask!4([2,3,2,3]));
-				float4 b3 = __builtin_ia32_shufps(m.zRow, m.wRow, shufMask!4([2,3,2,3]));
-				float4 a0 = __builtin_ia32_shufps(b0, b1, shufMask!4([0,2,0,2]));
-				float4 a1 = __builtin_ia32_shufps(b2, b3, shufMask!4([0,2,0,2]));
-				float4 a2 = __builtin_ia32_shufps(b0, b1, shufMask!4([1,3,1,3]));
-				float4 a3 = __builtin_ia32_shufps(b2, b3, shufMask!4([1,3,1,3]));
+				float4 b0 = __builtin_ia32_shufps(m.xRow, m.yRow, shufMask!([0,1,0,1]));
+				float4 b1 = __builtin_ia32_shufps(m.zRow, m.wRow, shufMask!([0,1,0,1]));
+				float4 b2 = __builtin_ia32_shufps(m.xRow, m.yRow, shufMask!([2,3,2,3]));
+				float4 b3 = __builtin_ia32_shufps(m.zRow, m.wRow, shufMask!([2,3,2,3]));
+				float4 a0 = __builtin_ia32_shufps(b0, b1, shufMask!([0,2,0,2]));
+				float4 a1 = __builtin_ia32_shufps(b2, b3, shufMask!([0,2,0,2]));
+				float4 a2 = __builtin_ia32_shufps(b0, b1, shufMask!([1,3,1,3]));
+				float4 a3 = __builtin_ia32_shufps(b2, b3, shufMask!([1,3,1,3]));
 
 				return float4x4(a0, a2, a1, a3);
 			}
