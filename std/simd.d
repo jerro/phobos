@@ -445,35 +445,6 @@ private
 		enum bool is8bitElement = (BaseType!(T).sizeof == 1);
 	}
 
-	/**** And some helpers for various architectures ****/
-	version(X86_OR_X64)
-	{
-        template shufMask(alias elements)
-        {
-            static if(elements.length == 2)
-                enum shufMask = ((elements[0] & 1) << 0) | ((elements[1] & 1) << 1);
-            else static if(elements.length)
-                enum shufMask = ((elements[0] & 3) << 0) | ((elements[1] & 3) << 2) | ((elements[2] & 3) << 4) | ((elements[3] & 3) << 6);
-        }
- 
-	}
-
-	version(ARM)
-	{
-		template ARMOpType(T, bool Rounded = false)
-		{
-			// NOTE: 0-unsigned, 1-signed, 2-poly, 3-float, 4-unsigned rounded, 5-signed rounded
-			static if(is(T == double2) || is(T == float4))
-				enum uint ARMOpType = 3;
-			else static if(is(T == long2) || is(T == int4) || is(T == short8) || is(T == byte16))
-				enum uint ARMOpType = 1 + (Rounded ? 4 : 0);
-			else static if(is(T == ulong2) || is(T == uint4) || is(T == ushort8) || is(T == ubyte16))
-				enum uint ARMOpType = 0 + (Rounded ? 4 : 0);
-			else
-				static assert(0, "Incorrect type");
-		}
-	}
-
     /**** Templates for generating TypeTuples ****/
     
     template staticIota(int start, int end, int stride = 1)
@@ -502,6 +473,53 @@ private
                 interleaveTuples!(a[1 .. $ / 2], a[$ / 2 + 1 .. $]))
                 interleaveTuples; 
     } 
+	
+    /**** And some helpers for various architectures ****/
+	version(X86_OR_X64)
+	{
+        template shufMask(alias elements)
+        {
+            static if(elements.length == 2)
+                enum shufMask = ((elements[0] & 1) << 0) | ((elements[1] & 1) << 1);
+            else static if(elements.length)
+                enum shufMask = ((elements[0] & 3) << 0) | ((elements[1] & 3) << 2) | ((elements[2] & 3) << 4) | ((elements[3] & 3) << 6);
+        }
+       
+        template pshufbMask(alias elements)
+        {
+            template c(a...)
+            {
+                static if(a.length == 0)
+                    alias TypeTuple!() c;
+                else 
+                    alias TypeTuple!(2 * a[0], 2 * a[0] + 1, c!(a[1 .. $])) c;
+            }
+ 
+            static if(elements.length == 16)
+                alias toTypeTuple!elements pshufbMask;
+            else static if(elements.length == 8)
+                alias c!(toTypeTuple!elements) pshufbMask;
+            else
+                static assert(0, "Unsupported parameter length.");
+        } 
+	}
+
+	version(ARM)
+	{
+		template ARMOpType(T, bool Rounded = false)
+		{
+			// NOTE: 0-unsigned, 1-signed, 2-poly, 3-float, 4-unsigned rounded, 5-signed rounded
+			static if(is(T == double2) || is(T == float4))
+				enum uint ARMOpType = 3;
+			else static if(is(T == long2) || is(T == int4) || is(T == short8) || is(T == byte16))
+				enum uint ARMOpType = 1 + (Rounded ? 4 : 0);
+			else static if(is(T == ulong2) || is(T == uint4) || is(T == ushort8) || is(T == ubyte16))
+				enum uint ARMOpType = 0 + (Rounded ? 4 : 0);
+			else
+				static assert(0, "Incorrect type");
+		}
+	}
+
 }
 
 
@@ -611,6 +629,8 @@ BaseType!T getScalar(SIMDVer Ver = sseVer, T)(T v) if(isVector!T)
 			{
 				static if(is(T == float4))
 					return __builtin_ia32_vec_ext_v4sf(v, 0);
+				static if(is(T == double2))
+					return __builtin_ia32_vec_ext_v2df(v, 0);
 				else static if(is64bitElement!T)
 					return __builtin_ia32_vec_ext_v2di(v, 0);
 				else static if(is32bitElement!T)
@@ -1137,6 +1157,17 @@ T swizzle(string swiz, SIMDVer Ver = sseVer, T)(T v)
 					}
 					else static if(is32bitElement!(T))
 						return __builtin_ia32_pshufd(v, shufMask!(elements));
+                    else static if(is8bitElement!T || is16bitElement!T)
+                    {
+						static if(Ver >= SIMDVer.SSSE3)
+						{
+                            static ubyte[16] mask = [pshufbMask!elements];
+                            auto vmask = cast(ubyte16) __builtin_ia32_loaddqu(cast(char*) mask.ptr);
+                            return cast(T) __builtin_ia32_pshufb128(cast(ubyte16) v, vmask);
+                        }
+						else
+							static assert(0, "Only supported in SSSE3 and above");
+                    }
 					else
 					{
 						// TODO: 16 and 8bit swizzles...
