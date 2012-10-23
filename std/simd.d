@@ -195,7 +195,7 @@ private
 				  is(T == long2) || is(T == ulong2) ||
 				  is(T == int4) || is(T == uint4) ||
 				  is(T == short8) || is(T == ushort8) ||
-				  is(T == byte16) || is(T == ubyte16))
+				  is(T == byte16) || is(T == ubyte16) || is(T == void16))
 			enum bool isVector = true;
 		else
 			enum bool isVector = false;
@@ -3160,7 +3160,7 @@ T shiftBytesRightImmediate(size_t bytes, SIMDVer Ver = sseVer, T)(T v)
 			else version(GNU_OR_LDC)
 			{
 				// little endian reads the bytes into the register in reverse, so we need to flip the operations
-				return cast(T) __builtin_ia32_pslldqi128(v, cast(ubyte16) bytes * 8); // TODO: *8? WAT?
+				return cast(T) __builtin_ia32_pslldqi128(cast(ubyte16) v, bytes * 8); // TODO: *8? WAT?
 			}
 		}
 		else version(ARM)
