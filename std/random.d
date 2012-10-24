@@ -2362,7 +2362,8 @@ auto normal(T, Rng)(T mean, T sigma, ref Rng rng)
 
 struct NormalDist(T, int n = 64)
 {
-    enum area = cast(T) 0.5;
+    mixin Normal!T;
+
     enum nlayers = n;
     alias ZigguratLayer!T L;
 
@@ -2375,24 +2376,6 @@ struct NormalDist(T, int n = 64)
     T headDx;
     T headDy;
  
-    static T f(T x)
-    {
-        enum k = 1 / (2 * cast(T) PI) ^^ 0.5;
-        return exp(-0.5 * (x) ^^ 2) * k;
-    }
-
-    static T fint(T x)
-    {
-        enum k = 1 / (cast(T) 2) ^^ 0.5;
-        return erf(x * k) * 0.5;
-    }
-
-    static T fderiv(T x)
-    {
-        enum k = 1 / (2 * cast(T) PI) ^^ 0.5;
-        return -x * exp(- (x)  ^^ 2 * 0.5) * k;
-    }
-    
     this(T mean, T sigma)
     {
         this.mean = mean;
