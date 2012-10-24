@@ -2368,7 +2368,6 @@ struct NormalDist(T, int n = 64)
 
     T mean;
     T sigma;
-    T invSigma;
 
     L[n] layers;
     T tailX;
@@ -2376,36 +2375,38 @@ struct NormalDist(T, int n = 64)
     T headDx;
     T headDy;
  
-    T f(T x)
+    static T f(T x)
     {
         enum k = 1 / (2 * cast(T) PI) ^^ 0.5;
-        return invSigma * exp(-0.5 * (x* invSigma) ^^ 2) * k;
+        return exp(-0.5 * (x) ^^ 2) * k;
     }
 
-    T fint(T x)
+    static T fint(T x)
     {
         enum k = 1 / (cast(T) 2) ^^ 0.5;
-        return erf(x * invSigma * k) * 0.5;
+        return erf(x * k) * 0.5;
     }
 
-    T fderiv(T x)
+    static T fderiv(T x)
     {
         enum k = 1 / (2 * cast(T) PI) ^^ 0.5;
-        return -invSigma ^^ 2 * x * exp(- (x * invSigma)  ^^ 2 * 0.5) * k;
+        return -x * exp(- (x)  ^^ 2 * 0.5) * k;
     }
     
     this(T mean, T sigma)
     {
         this.mean = mean;
         this.sigma = sigma;
-        this.invSigma = 1 / sigma;
         
         //layers = new L[nlayers];
         zigguratInitialize(
-            layers, tailX, tailXInterval, area, &f, &fint, &fderiv); 
+            layers, tailX, tailXInterval, area, 
+            delegate (T x) => f(x), 
+            delegate (T x) => fint(x), 
+            delegate (T x) => fderiv(x)); 
         
         headDx = layers.back.x;
-        headDy = cast(T) 1 - exp(- (headDx * invSigma) ^^ 2 * cast(T) 0.5);
+        headDy = cast(T) 1 - exp(- (headDx) ^^ 2 * cast(T) 0.5);
     }
         
     auto head(Rng)(T x, ref Rng rng)
@@ -2442,7 +2443,7 @@ struct NormalDist(T, int n = 64)
     auto get(Rng)(ref Rng rng)
     {
         return mean + 
-            zigguratAlgorithm!(f, tail, head, this, true, rng)();
+            zigguratAlgorithm!(f, tail, head, this, true, rng)() * sigma;
     }
 }
 
