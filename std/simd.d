@@ -104,71 +104,71 @@ else
 
 version(LDC)
 {
-    template RepeatType(T, size_t n, R...)
-    {
-        static if(n == 0)
-            alias R RepeatType;
-        else
-            alias RepeatType!(T, n - 1, T, R) RepeatType;
-    }
+	template RepeatType(T, size_t n, R...)
+	{
+		static if(n == 0)
+			alias R RepeatType;
+		else
+			alias RepeatType!(T, n - 1, T, R) RepeatType;
+	}
 
-    template llvmInstructions(string v)
-    {
-        enum llvmInstructions = `
-            pragma(shufflevector)
-                `~v~` shufflevector(`~v~`, `~v~`, RepeatType!(int, `~v~`.init.length)) nothrow pure @safe;
+	template llvmInstructions(string v)
+	{
+		enum llvmInstructions = `
+			pragma(shufflevector)
+				`~v~` shufflevector(`~v~`, `~v~`, RepeatType!(int, `~v~`.init.length)) nothrow pure @safe;
 
-            pragma(insertelement)
-                `~v~` insertelement(`~v~`, typeof(`~v~`.init.ptr[0]), int) nothrow pure @safe;
+			pragma(insertelement)
+				`~v~` insertelement(`~v~`, typeof(`~v~`.init.ptr[0]), int) nothrow pure @safe;
 
-            pragma(extractelement)
-                typeof(`~v~`.init.ptr[0]) extractelement(`~v~`, int) nothrow pure @safe;`;
-    } 
+			pragma(extractelement)
+				typeof(`~v~`.init.ptr[0]) extractelement(`~v~`, int) nothrow pure @safe;`;
+	}
 
-    mixin( 
-        llvmInstructions!"float4" ~
-        llvmInstructions!"double2" ~
-        llvmInstructions!"ubyte16" ~
-        llvmInstructions!"byte16" ~
-        llvmInstructions!"ushort8" ~
-        llvmInstructions!"short8" ~
-        llvmInstructions!"uint4" ~
-        llvmInstructions!"int4" ~
-        llvmInstructions!"ulong2" ~
-        llvmInstructions!"long2");
+	mixin(
+		llvmInstructions!"float4" ~
+		llvmInstructions!"double2" ~
+		llvmInstructions!"ubyte16" ~
+		llvmInstructions!"byte16" ~
+		llvmInstructions!"ushort8" ~
+		llvmInstructions!"short8" ~
+		llvmInstructions!"uint4" ~
+		llvmInstructions!"int4" ~
+		llvmInstructions!"ulong2" ~
+		llvmInstructions!"long2");
 
-   
-    version(X86_OR_X64)
-        import ldc.gccbuiltins_x86;
 
-    template ldcFloatMaskLess(string type, string a, string b, bool includeEqual)
-    {
-        enum params = a~`, `~b~`, `~(includeEqual ? "2" : "1");
-        
-        enum ldcFloatMaskLess = `
-            static if(is(T == double2))
-            {
-                return __builtin_ia32_cmppd(`~params~`);
-            }
-            else static if(is(T == float4))
-            {
-                return __builtin_ia32_cmpps(`~params~`);
-            }
-            else
-                static assert(0, "Unsupported vector type: " ~ `~type~`);`;
-    }
+	version(X86_OR_X64)
+		import ldc.gccbuiltins_x86;
 
-    alias byte16 PblendvbParam;
+	template ldcFloatMaskLess(string type, string a, string b, bool includeEqual)
+	{
+		enum params = a~`, `~b~`, `~(includeEqual ? "2" : "1");
+
+		enum ldcFloatMaskLess = `
+			static if(is(T == double2))
+			{
+				return __builtin_ia32_cmppd(`~params~`);
+			}
+			else static if(is(T == float4))
+			{
+				return __builtin_ia32_cmpps(`~params~`);
+			}
+			else
+				static assert(0, "Unsupported vector type: " ~ `~type~`);`;
+	}
+
+	alias byte16 PblendvbParam;
 }
 else version(GNU)
 {
-    alias ubyte16 PblendvbParam;
+	alias ubyte16 PblendvbParam;
 }
 
 version(GNU)
-    version = GNU_OR_LDC;
+	version = GNU_OR_LDC;
 version(LDC)
-    version = GNU_OR_LDC;
+	version = GNU_OR_LDC;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Internal constants
@@ -345,18 +345,18 @@ private
 	//	template isVector(T : __vector(U[N]), U, size_t N) { enum bool isVector = true; }
 	//	template isVector(T) { enum bool isVector = false; }
 
-	// pull the base type from a vector, array, or primitive 
-    // type. The first version does not work for vectors.
+	// pull the base type from a vector, array, or primitive
+	// type. The first version does not work for vectors.
 	template ArrayType(T : T[]) { alias T ArrayType; }
-    template ArrayType(T) if(isVector!T)
-    {  
-        // typeof T.array.init does not work for some reason, so we use this 
-        alias typeof(()
-        {
-            T a;
-            return a.array;
-        }()) ArrayType;
-    }
+	template ArrayType(T) if(isVector!T)
+	{
+		// typeof T.array.init does not work for some reason, so we use this
+		alias typeof(()
+		{
+			T a;
+			return a.array;
+		}()) ArrayType;
+	}
 	//	template VectorType(T : Vector!T) { alias T VectorType; }
 	template BaseType(T)
 	{
@@ -445,63 +445,63 @@ private
 		enum bool is8bitElement = (BaseType!(T).sizeof == 1);
 	}
 
-    /**** Templates for generating TypeTuples ****/
-    
-    template staticIota(int start, int end, int stride = 1)
-    {
-        static if(start >= end)
-            alias TypeTuple!() staticIota;
-        else
-            alias TypeTuple!(start, staticIota!(start + stride, end, stride)) 
-                staticIota;
-    }
+	/**** Templates for generating TypeTuples ****/
 
-    template toTypeTuple(alias array, r...)
-    {
-        static if(array.length == r.length)
-            alias r toTypeTuple;
-        else
-            alias toTypeTuple!(array, r, array[r.length]) toTypeTuple;
-    }
+	template staticIota(int start, int end, int stride = 1)
+	{
+		static if(start >= end)
+			alias TypeTuple!() staticIota;
+		else
+			alias TypeTuple!(start, staticIota!(start + stride, end, stride))
+				staticIota;
+	}
 
-    template interleaveTuples(a...)
-    {
-        static if(a.length == 0)
-            alias TypeTuple!() interleaveTuples;
-        else
-            alias TypeTuple!(a[0], a[$ / 2], 
-                interleaveTuples!(a[1 .. $ / 2], a[$ / 2 + 1 .. $]))
-                interleaveTuples; 
-    } 
-	
-    /**** And some helpers for various architectures ****/
+	template toTypeTuple(alias array, r...)
+	{
+		static if(array.length == r.length)
+			alias r toTypeTuple;
+		else
+			alias toTypeTuple!(array, r, array[r.length]) toTypeTuple;
+	}
+
+	template interleaveTuples(a...)
+	{
+		static if(a.length == 0)
+			alias TypeTuple!() interleaveTuples;
+		else
+			alias TypeTuple!(a[0], a[$ / 2],
+				interleaveTuples!(a[1 .. $ / 2], a[$ / 2 + 1 .. $]))
+				interleaveTuples;
+	}
+
+	/**** And some helpers for various architectures ****/
 	version(X86_OR_X64)
 	{
-        template shufMask(alias elements)
-        {
-            static if(elements.length == 2)
-                enum shufMask = ((elements[0] & 1) << 0) | ((elements[1] & 1) << 1);
-            else static if(elements.length)
-                enum shufMask = ((elements[0] & 3) << 0) | ((elements[1] & 3) << 2) | ((elements[2] & 3) << 4) | ((elements[3] & 3) << 6);
-        }
-       
-        template pshufbMask(alias elements)
-        {
-            template c(a...)
-            {
-                static if(a.length == 0)
-                    alias TypeTuple!() c;
-                else 
-                    alias TypeTuple!(2 * a[0], 2 * a[0] + 1, c!(a[1 .. $])) c;
-            }
- 
-            static if(elements.length == 16)
-                alias toTypeTuple!elements pshufbMask;
-            else static if(elements.length == 8)
-                alias c!(toTypeTuple!elements) pshufbMask;
-            else
-                static assert(0, "Unsupported parameter length.");
-        } 
+		template shufMask(alias elements)
+		{
+			static if(elements.length == 2)
+				enum shufMask = ((elements[0] & 1) << 0) | ((elements[1] & 1) << 1);
+			else static if(elements.length)
+				enum shufMask = ((elements[0] & 3) << 0) | ((elements[1] & 3) << 2) | ((elements[2] & 3) << 4) | ((elements[3] & 3) << 6);
+		}
+
+		template pshufbMask(alias elements)
+		{
+			template c(a...)
+			{
+				static if(a.length == 0)
+					alias TypeTuple!() c;
+				else
+					alias TypeTuple!(2 * a[0], 2 * a[0] + 1, c!(a[1 .. $])) c;
+			}
+
+			static if(elements.length == 16)
+				alias toTypeTuple!elements pshufbMask;
+			else static if(elements.length == 8)
+				alias c!(toTypeTuple!elements) pshufbMask;
+			else
+				static assert(0, "Unsupported parameter length.");
+		}
 	}
 
 	version(ARM)
@@ -548,20 +548,20 @@ T loadScalar(T, SIMDVer Ver = sseVer)(BaseType!T* pS) if(isVector!T)
 		}
 		else version(GNU)
 		{
-			static if(is(T == float[4]))         
+			static if(is(T == float[4]))
 				return __builtin_ia32_loadss(pS);
-			else static if(is(T == double[2])) 
+			else static if(is(T == double[2]))
 				return __builtin_ia32_loadddup(pV);
 			else
 				static assert(0, "TODO");
 		}
-        else version(LDC)
-        {
-            //TODO: non-optimal
-            T r = 0;
-            r = insertelement(r, *pS, 0);
-            return r;
-        }
+		else version(LDC)
+		{
+			//TODO: non-optimal
+			T r = 0;
+			r = insertelement(r, *pS, 0);
+			return r;
+		}
 	}
 	else version(ARM)
 	{
@@ -591,18 +591,18 @@ T loadUnaligned(T, SIMDVer Ver = sseVer)(BaseType!T* pV) @trusted
 			else
 				return cast(Vector!T)__builtin_ia32_loaddqu(cast(char*)pV);
 		}
-        else version(LDC)
-        {
-            union U
-            {
-                T v;
-                ArrayType!T a;
-            }
- 
-            U u;
-            u.a = *cast(ArrayType!(T)*) pV;
-            return u.v; 
-        }
+		else version(LDC)
+		{
+			union U
+			{
+				T v;
+				ArrayType!T a;
+			}
+
+			U u;
+			u.a = *cast(ArrayType!(T)*) pV;
+			return u.v;
+		}
 	}
 	else version(ARM)
 	{
@@ -643,10 +643,10 @@ BaseType!T getScalar(SIMDVer Ver = sseVer, T)(T v) if(isVector!T)
 			else
 				static assert(0, "Unsupported vector type: " ~ T.stringof);
 		}
-        else version(LDC)
-        {
-            return extractelement(v, 0);
-        }
+		else version(LDC)
+		{
+			return extractelement(v, 0);
+		}
 	}
 	else version(ARM)
 	{
@@ -663,7 +663,7 @@ BaseType!T getScalar(SIMDVer Ver = sseVer, T)(T v) if(isVector!T)
 // That's why we need to use template parameter S and check that it is
 // the base type in the template constraint. We will use this in some other
 // functions too.
-void storeScalar(SIMDVer Ver = sseVer, T, S)(T v, S* pS) 
+void storeScalar(SIMDVer Ver = sseVer, T, S)(T v, S* pS)
 if(isVector!T && is(BaseType!T == S))
 {
 	// TODO: check this optimises correctly!! (opcode writes directly to memory)
@@ -784,7 +784,7 @@ T getW(SIMDVer Ver = sseVer, T)(T v) if(isVector!T)
 }
 
 // set the X element
-T setX(SIMDVer Ver = sseVer, T)(T v, T x) 
+T setX(SIMDVer Ver = sseVer, T)(T v, T x)
 if(isVector!T)
 {
 	version(X86_OR_X64)
@@ -811,11 +811,11 @@ if(isVector!T)
 			else
 				static assert(0, "Unsupported vector type: " ~ T.stringof);
 		}
-        else version(LDC)
-        {
-            enum int n = NumElements!T;
-            return shufflevector(v, x, n, staticIota!(1, n));  
-        }
+		else version(LDC)
+		{
+			enum int n = NumElements!T;
+			return shufflevector(v, x, n, staticIota!(1, n));
+		}
 	}
 	else version(ARM)
 	{
@@ -855,12 +855,12 @@ if(isVector!T)
 			else
 				static assert(0, "Unsupported vector type: " ~ T.stringof);
 		}
-        else version(LDC)
-        {
-            enum int n = NumElements!T;
-            static assert(n >= 2);
-            return shufflevector(v, y, 0, n + 1, staticIota!(2, n));  
-        }
+		else version(LDC)
+		{
+			enum int n = NumElements!T;
+			static assert(n >= 2);
+			return shufflevector(v, y, 0, n + 1, staticIota!(2, n));
+		}
 	}
 	else version(ARM)
 	{
@@ -898,12 +898,12 @@ if(isVector!T)
 			else
 				static assert(0, "Unsupported vector type: " ~ T.stringof);
 		}
-        else version(LDC)
-        {
-            enum int n = NumElements!T;
-            static assert(n >= 3);
-            return shufflevector(v, z, 0, 1,  n + 2, staticIota!(3, n));  
-        }
+		else version(LDC)
+		{
+			enum int n = NumElements!T;
+			static assert(n >= 3);
+			return shufflevector(v, z, 0, 1,  n + 2, staticIota!(3, n));
+		}
 	}
 	else version(ARM)
 	{
@@ -941,12 +941,12 @@ if(isVector!T)
 			else
 				static assert(0, "Unsupported vector type: " ~ T.stringof);
 		}
-        else version(LDC)
-        {
-            enum int n = NumElements!T;
-            static assert(n >= 4);
-            return shufflevector(v, w, 0, 1, 2, n + 3, staticIota!(4, n));  
-        }
+		else version(LDC)
+		{
+			enum int n = NumElements!T;
+			static assert(n >= 4);
+			return shufflevector(v, w, 0, 1, 2, n + 3, staticIota!(4, n));
+		}
 	}
 	else version(ARM)
 	{
@@ -975,7 +975,7 @@ private template elementNames(int Elements)
 // swizzle a vector: r = swizzle!"ZZWX"(v); // r = v.zzwx
 T swizzle(string swiz, SIMDVer Ver = sseVer, T)(T v)
 {
-    
+
 	// parse the string into elements
 	static int[N] parseElements(string swiz, size_t N)(string[] elements)
 	{
@@ -987,22 +987,22 @@ T swizzle(string swiz, SIMDVer Ver = sseVer, T)(T v)
 		foreach(int i; 0..N)
 			r[i] = i;
 
-        static int countUntil(R, T)(R r, T a)
-        {
-            int i = 0;
-            for(; !r.empty; r.popFront(), i++)
-                if(r.front == a)
-                    return i; 
+		static int countUntil(R, T)(R r, T a)
+		{
+			int i = 0;
+			for(; !r.empty; r.popFront(), i++)
+				if(r.front == a)
+					return i;
 
-            return -1;
-        }    
+			return -1;
+		}
 
 		if(swizzleKey.length == 1)
 		{
 			// broadcast
 			foreach(s; elements)
 			{
-                auto i = countUntil(s, swizzleKey[0]); 
+				auto i = countUntil(s, swizzleKey[0]);
 				if(i != -1)
 				{
 					// set all elements to 'i'
@@ -1016,11 +1016,11 @@ T swizzle(string swiz, SIMDVer Ver = sseVer, T)(T v)
 			// regular swizzle
 			foreach(s; elements) // foreach swizzle naming convention
 			{
-                bool bFound = true;
+				bool bFound = true;
 				foreach(i; 0..swizzleKey.length) // foreach char in swizzle string
 				{
-                    bool keyInS = false;
-					foreach(int j, c; s) // find the offset of the 
+					bool keyInS = false;
+					foreach(int j, c; s) // find the offset of the
 					{
 						if(swizzleKey[i] == c)
 						{
@@ -1029,7 +1029,7 @@ T swizzle(string swiz, SIMDVer Ver = sseVer, T)(T v)
 							break;
 						}
 					}
-                    bFound = bFound && keyInS;
+					bFound = bFound && keyInS;
 				}
 
 				if(bFound)
@@ -1157,17 +1157,17 @@ T swizzle(string swiz, SIMDVer Ver = sseVer, T)(T v)
 					}
 					else static if(is32bitElement!(T))
 						return __builtin_ia32_pshufd(v, shufMask!(elements));
-                    else static if(is8bitElement!T || is16bitElement!T)
-                    {
+					else static if(is8bitElement!T || is16bitElement!T)
+					{
 						static if(Ver >= SIMDVer.SSSE3)
 						{
-                            static ubyte[16] mask = [pshufbMask!elements];
-                            auto vmask = cast(ubyte16) __builtin_ia32_loaddqu(cast(char*) mask.ptr);
-                            return cast(T) __builtin_ia32_pshufb128(cast(ubyte16) v, vmask);
-                        }
+							static ubyte[16] mask = [pshufbMask!elements];
+							auto vmask = cast(ubyte16) __builtin_ia32_loaddqu(cast(char*) mask.ptr);
+							return cast(T) __builtin_ia32_pshufb128(cast(ubyte16) v, vmask);
+						}
 						else
 							static assert(0, "Only supported in SSSE3 and above");
-                    }
+					}
 					else
 					{
 						// TODO: 16 and 8bit swizzles...
@@ -1175,10 +1175,10 @@ T swizzle(string swiz, SIMDVer Ver = sseVer, T)(T v)
 					}
 				}
 			}
-            else version(LDC)
-            {
-                return shufflevector(v, v, toTypeTuple!elements);
-            }
+			else version(LDC)
+			{
+				return shufflevector(v, v, toTypeTuple!elements);
+			}
 		}
 		else version(ARM)
 		{
@@ -1246,13 +1246,13 @@ T interleaveLow(SIMDVer Ver = sseVer, T)(T v1, T v2)
 			else
 				static assert(0, "Unsupported vector type: " ~ T.stringof);
 		}
-        else version(LDC)
-        {
-            enum int n = NumElements!T;
-            
-            return shufflevector(v1, v2, interleaveTuples!(
-                staticIota!(0, n / 2), staticIota!(n, n + n / 2)));
-        }
+		else version(LDC)
+		{
+			enum int n = NumElements!T;
+
+			return shufflevector(v1, v2, interleaveTuples!(
+				staticIota!(0, n / 2), staticIota!(n, n + n / 2)));
+		}
 	}
 	else version(ARM)
 	{
@@ -1292,13 +1292,13 @@ T interleaveHigh(SIMDVer Ver = sseVer, T)(T v1, T v2)
 			else
 				static assert(0, "Unsupported vector type: " ~ T.stringof);
 		}
-        else version(LDC)
-        {
-            enum int n = NumElements!T;
-            
-            return shufflevector(v1, v2, interleaveTuples!(
-                staticIota!(n / 2, n), staticIota!(n + n / 2, n + n)));
-        }
+		else version(LDC)
+		{
+			enum int n = NumElements!T;
+
+			return shufflevector(v1, v2, interleaveTuples!(
+				staticIota!(n / 2, n), staticIota!(n + n / 2, n + n)));
+		}
 	}
 	else version(ARM)
 	{
@@ -1353,15 +1353,15 @@ PromotionOf!T unpackLow(SIMDVer Ver = sseVer, T)(T v)
 			else
 				static assert(0, "Unsupported vector type: " ~ T.stringof);
 		}
-        else version(LDC)
-        {
-            enum int n = NumElements!T;
-            T zero = 0;
-            alias interleaveTuples!(
-                staticIota!(0, n / 2), staticIota!(n, n + n / 2)) index;
+		else version(LDC)
+		{
+			enum int n = NumElements!T;
+			T zero = 0;
+			alias interleaveTuples!(
+				staticIota!(0, n / 2), staticIota!(n, n + n / 2)) index;
 
-            return cast(PromotionOf!T) shufflevector(v, zero, index);
-        }
+			return cast(PromotionOf!T) shufflevector(v, zero, index);
+		}
 	}
 	else version(ARM)
 	{
@@ -1398,15 +1398,15 @@ PromotionOf!T unpackHigh(SIMDVer Ver = sseVer, T)(T v)
 			else
 				static assert(0, "Unsupported vector type: " ~ T.stringof);
 		}
-        else version(LDC)
-        {
-            enum int n = NumElements!T;
-            T zero = 0;
-            alias interleaveTuples!(
-                staticIota!(n / 2, n), staticIota!(n + n / 2, n + n)) index;
-            
-            return cast(PromotionOf!T) shufflevector(v, zero, index);
-        }
+		else version(LDC)
+		{
+			enum int n = NumElements!T;
+			T zero = 0;
+			alias interleaveTuples!(
+				staticIota!(n / 2, n), staticIota!(n + n / 2, n + n)) index;
+
+			return cast(PromotionOf!T) shufflevector(v, zero, index);
+		}
 	}
 	else version(ARM)
 	{
@@ -1455,14 +1455,14 @@ DemotionOf!T pack(SIMDVer Ver = sseVer, T)(T v1, T v2)
 			else
 				static assert(0, "Unsupported vector type: " ~ T.stringof);
 		}
-        else version(LDC)
-        {
-            alias DemotionOf!T D;
-            enum int n = NumElements!D;
+		else version(LDC)
+		{
+			alias DemotionOf!T D;
+			enum int n = NumElements!D;
 
-            return shufflevector(
-                cast(D) v1, cast(D) v2, staticIota!(0, 2 * n, 2));
-        }
+			return shufflevector(
+				cast(D) v1, cast(D) v2, staticIota!(0, 2 * n, 2));
+		}
 	}
 	else version(ARM)
 	{
@@ -1511,101 +1511,101 @@ DemotionOf!T packSaturate(SIMDVer Ver = sseVer, T)(T v1, T v2)
 
 int4 toInt(SIMDVer Ver = sseVer, T)(T v)
 {
-    static if(is(T == int4))
-        return v;
-    else
-    {
-        version(X86_OR_X64)
-        {
-            version(DigitalMars)
-            {
-                static assert(0, "TODO");
-            }
-            else version(GNU_OR_LDC)
-            {
-                static if(is(T == float4))
-                    return __builtin_ia32_cvtps2dq(v);
-                else static if(is(T == double2))
-                    return __builtin_ia32_cvtpd2dq(v); // TODO: z,w are undefined... should we repeat xy to zw?
-                else
-                    static assert(0, "Unsupported vector type: " ~ T.stringof);
-            }
-        }
-        else version(ARM)
-        {
-            static assert(0, "TODO");
-        }
-        else
-        {
-            static assert(0, "Unsupported on this architecture");
-        }
-    }
+	static if(is(T == int4))
+		return v;
+	else
+	{
+		version(X86_OR_X64)
+		{
+			version(DigitalMars)
+			{
+				static assert(0, "TODO");
+			}
+			else version(GNU_OR_LDC)
+			{
+				static if(is(T == float4))
+					return __builtin_ia32_cvtps2dq(v);
+				else static if(is(T == double2))
+					return __builtin_ia32_cvtpd2dq(v); // TODO: z,w are undefined... should we repeat xy to zw?
+				else
+					static assert(0, "Unsupported vector type: " ~ T.stringof);
+			}
+		}
+		else version(ARM)
+		{
+			static assert(0, "TODO");
+		}
+		else
+		{
+			static assert(0, "Unsupported on this architecture");
+		}
+	}
 }
 
 float4 toFloat(SIMDVer Ver = sseVer, T)(T v)
 {
-    static if(is(T == float4))
-        return v;
-    else
-    {
-        version(X86_OR_X64)
-        {
-            version(DigitalMars)
-            {
-                static assert(0, "TODO");
-            }
-            else version(GNU_OR_LDC)
-            {
-                static if(is(T == int4))
-                    return __builtin_ia32_cvtdq2ps(v);
-                else static if(is(T == double2))
-                    return __builtin_ia32_cvtpd2ps(v); // TODO: z,w are undefined... should we repeat xy to zw?
-                else
-                    static assert(0, "Unsupported vector type: " ~ T.stringof);
-            }
-        }
-        else version(ARM)
-        {
-            static assert(0, "TODO");
-        }
-        else
-        {
-            static assert(0, "Unsupported on this architecture");
-        }
-    }
+	static if(is(T == float4))
+		return v;
+	else
+	{
+		version(X86_OR_X64)
+		{
+			version(DigitalMars)
+			{
+				static assert(0, "TODO");
+			}
+			else version(GNU_OR_LDC)
+			{
+				static if(is(T == int4))
+					return __builtin_ia32_cvtdq2ps(v);
+				else static if(is(T == double2))
+					return __builtin_ia32_cvtpd2ps(v); // TODO: z,w are undefined... should we repeat xy to zw?
+				else
+					static assert(0, "Unsupported vector type: " ~ T.stringof);
+			}
+		}
+		else version(ARM)
+		{
+			static assert(0, "TODO");
+		}
+		else
+		{
+			static assert(0, "Unsupported on this architecture");
+		}
+	}
 }
 
 double2 toDouble(SIMDVer Ver = sseVer, T)(T v)
 {
-    static if(is(T == double2))
-        return v;
-    else
-    {
-        version(X86_OR_X64)
-        {
-            version(DigitalMars)
-            {
-                static assert(0, "TODO");
-            }
-            else version(GNU_OR_LDC)
-            {
-                static if(is(T == int4))
-                    return __builtin_ia32_cvtdq2pd(v);
-                else static if(is(T == float4))
-                    return __builtin_ia32_cvtps2pd(v);
-                else
-                    static assert(0, "Unsupported vector type: " ~ T.stringof);
-            }
-        }
-        else version(ARM)
-        {
-            static assert(0, "TODO");
-        }
-        else
-        {
-            static assert(0, "Unsupported on this architecture");
-        }
-    }
+	static if(is(T == double2))
+		return v;
+	else
+	{
+		version(X86_OR_X64)
+		{
+			version(DigitalMars)
+			{
+				static assert(0, "TODO");
+			}
+			else version(GNU_OR_LDC)
+			{
+				static if(is(T == int4))
+					return __builtin_ia32_cvtdq2pd(v);
+				else static if(is(T == float4))
+					return __builtin_ia32_cvtps2pd(v);
+				else
+					static assert(0, "Unsupported vector type: " ~ T.stringof);
+			}
+		}
+		else version(ARM)
+		{
+			static assert(0, "TODO");
+		}
+		else
+		{
+			static assert(0, "Unsupported on this architecture");
+		}
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1631,19 +1631,19 @@ T abs(SIMDVer Ver = sseVer, T)(T v)
 		else version(GNU_OR_LDC)
 		{
 			static if(is(T == double2))
-            {
-                version(GNU)
-                    return __builtin_ia32_andnpd(cast(double2)signMask2, v);
-                else
-                    return cast(double2)(~signMask2 & cast(ulong2)v);
-            }
+			{
+				version(GNU)
+					return __builtin_ia32_andnpd(cast(double2)signMask2, v);
+				else
+					return cast(double2)(~signMask2 & cast(ulong2)v);
+			}
 			else static if(is(T == float4))
-            {
-                version(GNU)
-                    return __builtin_ia32_andnps(cast(float4)signMask4, v);
-                else
-                    return cast(float4)(~signMask4 & cast(uint4)v);
-            }
+			{
+				version(GNU)
+					return __builtin_ia32_andnps(cast(float4)signMask4, v);
+				else
+					return cast(float4)(~signMask4 & cast(uint4)v);
+			}
 			else static if(Ver >= SIMDVer.SSSE3)
 			{
 				static if(is64bitElement!(T))
@@ -2840,10 +2840,10 @@ T or(SIMDVer Ver = sseVer, T)(T v1, T v2)
 			else
 				return __builtin_ia32_por128(v1, v2);
 		}
-        else version(LDC)
-        {
-            return cast(T) (cast(int4) v1 | cast(int4) v2);
-        }
+		else version(LDC)
+		{
+			return cast(T) (cast(int4) v1 | cast(int4) v2);
+		}
 	}
 	else version(ARM)
 	{
@@ -2879,10 +2879,10 @@ T and(SIMDVer Ver = sseVer, T)(T v1, T v2)
 			else
 				return __builtin_ia32_pand128(v1, v2);
 		}
-        else version(LDC)
-        {
-            return cast(T)(cast(int4) v1 & cast(int4) v2); 
-        }
+		else version(LDC)
+		{
+			return cast(T)(cast(int4) v1 & cast(int4) v2);
+		}
 	}
 	else version(ARM)
 	{
@@ -2918,10 +2918,10 @@ T andNot(SIMDVer Ver = sseVer, T)(T v1, T v2)
 			else
 				return __builtin_ia32_pandn128(v2, v1);
 		}
-        else version(LDC)
-        {
-            return cast(T)(cast(int4) v1 & ~cast(int4) v2); 
-        }
+		else version(LDC)
+		{
+			return cast(T)(cast(int4) v1 & ~cast(int4) v2);
+		}
 	}
 	else version(ARM)
 	{
@@ -2951,10 +2951,10 @@ T xor(SIMDVer Ver = sseVer, T)(T v1, T v2)
 			else
 				return __builtin_ia32_pxor128(v1, v2);
 		}
-        else version(LDC)
-        {
-            return cast(T) (cast(int4) v1 ^ cast(int4) v2); 
-        }
+		else version(LDC)
+		{
+			return cast(T) (cast(int4) v1 ^ cast(int4) v2);
+		}
 	}
 	else version(ARM)
 	{
@@ -3430,15 +3430,15 @@ void16 maskEqual(SIMDVer Ver = sseVer, T)(T a, T b)
 			else
 				static assert(0, "Unsupported vector type: " ~ T.stringof);
 		}
-        else version(LDC)
-        {
+		else version(LDC)
+		{
 			static if(is(T == double2))
 				return __builtin_ia32_cmppd(a, b, 0);
 			else static if(is(T == float4))
 				return __builtin_ia32_cmpps(a, b, 0);
 			else
 				static assert(0, "Unsupported vector type: " ~ T.stringof);
-        }
+		}
 	}
 	else version(ARM)
 	{
@@ -3468,15 +3468,15 @@ void16 maskNotEqual(SIMDVer Ver = sseVer, T)(T a, T b)
 			else
 				return comp!Ver(cast(void16)maskEqual!Ver(a, b));
 		}
-        else version(LDC)
-        {
+		else version(LDC)
+		{
 			static if(is(T == double2))
 				return __builtin_ia32_cmppd(a, b, 4);
 			else static if(is(T == float4))
 				return __builtin_ia32_cmpps(a, b, 4);
-	        else
-                static assert(0, "Unsupported vector type: " ~ T.stringof);
-        }
+			else
+				static assert(0, "Unsupported vector type: " ~ T.stringof);
+		}
 	}
 	else version(ARM)
 	{
@@ -3500,20 +3500,20 @@ void16 maskGreater(SIMDVer Ver = sseVer, T)(T a, T b)
 		else version(GNU)
 		{
 			static if(is(T == double2))
-            {
-                return __builtin_ia32_cmpgtpd(a, b);
-            }
+			{
+				return __builtin_ia32_cmpgtpd(a, b);
+			}
 			else static if(is(T == float4))
-            {
-                return __builtin_ia32_cmpgtps(a, b);
-            }
+			{
+				return __builtin_ia32_cmpgtps(a, b);
+			}
 			else static if(is(T == long2))
 			{
-                return __builtin_ia32_pcmpgtq(a, b);
+				return __builtin_ia32_pcmpgtq(a, b);
 			}
 			else static if(is(T == ulong2))
 			{
-                return __builtin_ia32_pcmpgtq(a + signMask2, b + signMask2);
+				return __builtin_ia32_pcmpgtq(a + signMask2, b + signMask2);
 			}
 			else static if(is(T == int4))
 				return __builtin_ia32_pcmpgtd128(a, b);
@@ -3528,10 +3528,10 @@ void16 maskGreater(SIMDVer Ver = sseVer, T)(T a, T b)
 			else
 				static assert(0, "Unsupported vector type: " ~ T.stringof);
 		}
-        else version(LDC)
-        {
-            mixin(ldcFloatMaskLess!(T.stringof, "b", "a", false));
-        }
+		else version(LDC)
+		{
+			mixin(ldcFloatMaskLess!(T.stringof, "b", "a", false));
+		}
 	}
 	else version(ARM)
 	{
@@ -3561,10 +3561,10 @@ void16 maskGreaterEqual(SIMDVer Ver = sseVer, T)(T a, T b)
 			else
 				return or!Ver(cast(void16)maskGreater!Ver(a, b), cast(void16)maskEqual!Ver(a, b)); // compound greater OR equal
 		}
-        else version(LDC)
-        {
-            mixin(ldcFloatMaskLess!(T.stringof, "b", "a", true));
-        }
+		else version(LDC)
+		{
+			mixin(ldcFloatMaskLess!(T.stringof, "b", "a", true));
+		}
 	}
 	else version(ARM)
 	{
@@ -3594,10 +3594,10 @@ void16 maskLess(SIMDVer Ver = sseVer, T)(T a, T b)
 			else
 				return maskGreaterEqual!Ver(b, a); // reverse the args
 		}
-        else version(LDC)
-        {
-            mixin(ldcFloatMaskLess!(T.stringof, "a", "b", false));
-        }
+		else version(LDC)
+		{
+			mixin(ldcFloatMaskLess!(T.stringof, "a", "b", false));
+		}
 	}
 	else version(ARM)
 	{
@@ -3627,10 +3627,10 @@ void16 maskLessEqual(SIMDVer Ver = sseVer, T)(T a, T b)
 			else
 				return maskGreaterEqual!Ver(b, a); // reverse the args
 		}
-        else version(LDC)
-        {
-            mixin(ldcFloatMaskLess!(T.stringof, "a", "b", true));
-        }
+		else version(LDC)
+		{
+			mixin(ldcFloatMaskLess!(T.stringof, "a", "b", true));
+		}
 	}
 	else version(ARM)
 	{
@@ -3664,10 +3664,10 @@ T select(SIMDVer Ver = sseVer, T)(void16 mask, T x, T y)
 				else static if(is(T == float4))
 					return __builtin_ia32_blendvps(y, x, cast(float4)mask);
 				else
-                {
-                    alias PblendvbParam P;
+				{
+					alias PblendvbParam P;
 					return cast(T)__builtin_ia32_pblendvb128(cast(P)y, cast(P)x, cast(P)mask);
-                }
+				}
 			}
 			else
 				return xor!Ver(x, and!Ver(cast(T)mask, xor!Ver(y, x)));
