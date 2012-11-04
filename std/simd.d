@@ -1703,84 +1703,87 @@ double2 toDouble(SIMDVer Ver = sseVer, T)(T v)
 // Basic mathematical operations
 
 // unary absolute
+
 T abs(SIMDVer Ver = sseVer, T)(T v)
 {
-	static assert(!isUnsigned!(T), "Can not take absolute of unsigned value");
-
 	/******************************
 	* integer abs with no branches
 	*   mask = v >> numBits(v)-1;
 	*   r = (v + mask) ^ mask;
 	******************************/
 
-	version(X86_OR_X64)
-	{
-		version(DigitalMars)
-		{
-			static assert(0, "TODO");
-		}
-		else version(GNU_OR_LDC)
-		{
-			static if(is(T == double2))
-			{
-				version(GNU)
-					return __builtin_ia32_andnpd(cast(double2)signMask2, v);
-				else
-					return cast(double2)(~signMask2 & cast(ulong2)v);
-			}
-			else static if(is(T == float4))
-			{
-				version(GNU)
-					return __builtin_ia32_andnps(cast(float4)signMask4, v);
-				else
-					return cast(float4)(~signMask4 & cast(uint4)v);
-			}
-			else static if(Ver >= SIMDVer.SSSE3)
-			{
-				static if(is64bitElement!(T))
-					static assert(0, "Unsupported: abs(" ~ T.stringof ~ "). Should we emulate?");
-				else static if(is32bitElement!(T))
-					return __builtin_ia32_pabsd128(v);
-				else static if(is16bitElement!(T))
-					return __builtin_ia32_pabsw128(v);
-				else static if(is8bitElement!(T))
-					return __builtin_ia32_pabsb128(v);
-			}
-			else static if(is(T == int4))
-			{
-				int4 t = shiftRightImmediate!(31, Ver)(v);
-				return sub!Ver(xor!Ver(v, t), t);
-			}
-			else static if(is(T == short8))
-			{
-				return max!Ver(v, sub!Ver(0, v));
-			}
-			else static if(is(T == byte16))
-			{
-				byte16 t = maskGreater!Ver(0, v);
-				return sub!Ver(xor!Ver(v, t), t);
-			}
-			else
-				static assert(0, "Unsupported vector type: " ~ T.stringof);
-		}
-	}
-	else version(ARM)
-	{
-		static if(is(T == float4))
-			return __builtin_neon_vabsv4sf(v, ARMOpType!T);
-		else static if(is(T == int4))
-			return __builtin_neon_vabsv4si(v, ARMOpType!T);
-		else static if(is(T == short8))
-			return __builtin_neon_vabsv8hi(v, ARMOpType!T);
-		else static if(is(T == byte16))
-			return __builtin_neon_vabsv16qi(v, ARMOpType!T);
-		else
-			static assert(0, "Unsupported vector type: " ~ T.stringof);
-	}
-	else
-	{
-		static assert(0, "Unsupported on this architecture");
-	}
+    static if(isUnsigned!T)
+        return v;
+    else
+    {
+        version(X86_OR_X64)
+        {
+            version(DigitalMars)
+            {
+                static assert(0, "TODO");
+            }
+            else version(GNU_OR_LDC)
+            {
+                static if(is(T == double2))
+                {
+                    version(GNU)
+                        return __builtin_ia32_andnpd(cast(double2)signMask2, v);
+                    else
+                        return cast(double2)(~signMask2 & cast(ulong2)v);
+                }
+                else static if(is(T == float4))
+                {
+                    version(GNU)
+                        return __builtin_ia32_andnps(cast(float4)signMask4, v);
+                    else
+                        return cast(float4)(~signMask4 & cast(uint4)v);
+                }
+                else static if(Ver >= SIMDVer.SSSE3 && !is(T == long2))
+                {
+                    static if(is32bitElement!(T))
+                        return __builtin_ia32_pabsd128(v);
+                    else static if(is16bitElement!(T))
+                        return __builtin_ia32_pabsw128(v);
+                    else static if(is8bitElement!(T))
+                        return __builtin_ia32_pabsb128(v);
+                }
+                else static if(is(T == int4))
+                {
+                    int4 t = shiftRightImmediate!(31, Ver)(v);
+                    return sub!Ver(xor!Ver(v, t), t);
+                }
+                else static if(is(T == short8))
+                {
+                    return max!Ver(v, sub!Ver(0, v));
+                }
+                else static if(is(T == byte16) || is(T == long2))
+                {
+                    T zero = 0;
+                    T t = maskGreater!Ver(zero, v);
+                    return sub!Ver(xor!Ver(v, t), t);
+                }
+                else
+                    static assert(0, "Unsupported vector type: " ~ T.stringof);
+            }
+        }
+        else version(ARM)
+        {
+            static if(is(T == float4))
+                return __builtin_neon_vabsv4sf(v, ARMOpType!T);
+            else static if(is(T == int4))
+                return __builtin_neon_vabsv4si(v, ARMOpType!T);
+            else static if(is(T == short8))
+                return __builtin_neon_vabsv8hi(v, ARMOpType!T);
+            else static if(is(T == byte16))
+                return __builtin_neon_vabsv16qi(v, ARMOpType!T);
+            else
+                static assert(0, "Unsupported vector type: " ~ T.stringof);
+        }
+        else
+        {
+            static assert(0, "Unsupported on this architecture");
+        }
+    }
 }
 
 // unary negate
@@ -2154,6 +2157,8 @@ T min(SIMDVer Ver = sseVer, T)(T v1, T v2)
 				return __builtin_ia32_minpd(v1, v2);
 			else static if(is(T == float4))
 				return __builtin_ia32_minps(v1, v2);
+            else static if(is(T == long2) || is(T == ulong2))
+                return selectGreater!Ver(v1, v2, v2, v1);
 			else static if(is(T == int4))
 			{
 				static if(Ver >= SIMDVer.SSE41)
@@ -2226,6 +2231,8 @@ T max(SIMDVer Ver = sseVer, T)(T v1, T v2)
 				return __builtin_ia32_maxpd(v1, v2);
 			else static if(is(T == float4))
 				return __builtin_ia32_maxps(v1, v2);
+            else static if(is(T == long2) || is(T == ulong2))
+                return selectGreater!Ver(v1, v2, v1, v2);
 			else static if(is(T == int4))
 			{
 				static if(Ver >= SIMDVer.SSE41)
@@ -2525,7 +2532,10 @@ T rcp(SIMDVer Ver = sseVer, T)(T v)
 		else version(GNU_OR_LDC)
 		{
 			static if(is(T == double2))
-				return div!Ver(1.0, v);
+            {
+                T one = 1;
+				return div!Ver(one, v);
+            }
 			else static if(is(T == float4))
 				return __builtin_ia32_rcpps(v);
 			else
