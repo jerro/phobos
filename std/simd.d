@@ -114,23 +114,6 @@ version(LDC)
 	version(X86_OR_X64)
 		import ldc.gccbuiltins_x86;
 
-	template ldcFloatMaskLess(string type, string a, string b, bool includeEqual)
-	{
-		enum params = a~`, `~b~`, `~(includeEqual ? "2" : "1");
-
-		enum ldcFloatMaskLess = `
-			static if(is(T == double2))
-			{
-				return __builtin_ia32_cmppd(`~params~`);
-			}
-			else static if(is(T == float4))
-			{
-				return __builtin_ia32_cmpps(`~params~`);
-			}
-			else
-				static assert(0, "Unsupported vector type: " ~ `~type~`);`;
-	}
-
 	alias byte16 PblendvbParam;
 }
 else version(GNU)
@@ -196,7 +179,7 @@ private
 		else static if(is(T == ubyte16))
 			alias ubyte VectorType;
 		else
-			static assert(0, "Incorrect type");
+			static assert(0, "Incorrect type ");
 	}
 	template NumElements(T)
 	{
@@ -518,10 +501,17 @@ private
 
         template llvmVecType(V)
         {
-            alias BaseType!V T;
-            enum int n = NumElements!V;
-            enum llvmT = llvmType!T;
-            enum llvmVecType = "<"~n.stringof~" x "~llvmT~">"; 
+            static if(is(V == void16))
+                enum llvmVecType =  "<16 x i8>";
+            else static if(is(V == void32))
+                enum llvmVecType =  "<32 x i8>";
+            else
+            {
+                alias BaseType!V T;
+                enum int n = NumElements!V;
+                enum llvmT = llvmType!T;
+                enum llvmVecType = "<"~n.stringof~" x "~llvmT~">";
+            }
         }
 
         pragma(llvm_inline_ir)
@@ -574,6 +564,50 @@ private
             alias inlineIR!(ir, V, V, BaseType!V) insertelement; 
         }
 
+        enum Cond{ eq, ne, gt, ge }
+
+        template ldcCmpMask(Cond cond)
+        {
+            template ldcCmpMask(V)
+            {
+                alias BaseType!V T;
+                alias llvmType!T llvmT;
+                
+                static if(is(T == float))
+                    alias int Relem;
+                else static if(is(T == double))
+                    alias long Relem;
+                else
+                    alias SignedOf!T Relem;
+
+                enum int n = NumElements!V;
+                alias Vector!(Relem[n]) R;
+
+                enum llvmVec = llvmVecType!V;
+                enum llvmRVec = llvmVecType!R;
+                enum sign = 
+                    (cond == Cond.eq || cond == Cond.ne) ? "" : 
+                    isSigned!T ? "s" : "u";
+                enum condStr = 
+                    cond == Cond.eq ? "eq" : 
+                    cond == Cond.ne ? "ne" : 
+                    cond == Cond.ge ? "gt" : "ge";
+                enum op = 
+                    isFloatingPoint!T ? "fcmp o"~condStr : "icmp "~sign~condStr;
+                
+                enum ir = `
+                    %cmp = `~op~` `~llvmVec~` %0, %1
+                    %r = sext <`~n.stringof~` x i1> %cmp to `~llvmRVec~`
+                    ret `~llvmRVec~` %r`;
+
+                alias inlineIR!(ir, R, V, V) ldcCmpMask;
+            }
+        }
+
+        alias ldcCmpMask!(Cond.eq) ldcEqMask;
+        alias ldcCmpMask!(Cond.ne) ldcNeMask;
+        alias ldcCmpMask!(Cond.gt) ldcGtMask;
+        alias ldcCmpMask!(Cond.gt) ldcGeMask;
     }
 }
 
@@ -3488,14 +3522,7 @@ void16 maskEqual(SIMDVer Ver = sseVer, T)(T a, T b)
 				static assert(0, "Unsupported vector type: " ~ T.stringof);
 		}
 		else version(LDC)
-		{
-			static if(is(T == double2))
-				return __builtin_ia32_cmppd(a, b, 0);
-			else static if(is(T == float4))
-				return __builtin_ia32_cmpps(a, b, 0);
-			else
-				static assert(0, "Unsupported vector type: " ~ T.stringof);
-		}
+            return ldcEqMask!T(a, b); 
 	}
 	else version(ARM)
 	{
@@ -3526,14 +3553,7 @@ void16 maskNotEqual(SIMDVer Ver = sseVer, T)(T a, T b)
 				return comp!Ver(cast(void16)maskEqual!Ver(a, b));
 		}
 		else version(LDC)
-		{
-			static if(is(T == double2))
-				return __builtin_ia32_cmppd(a, b, 4);
-			else static if(is(T == float4))
-				return __builtin_ia32_cmpps(a, b, 4);
-			else
-				static assert(0, "Unsupported vector type: " ~ T.stringof);
-		}
+            return ldcNeMask!T(a, b); 
 	}
 	else version(ARM)
 	{
@@ -3586,9 +3606,7 @@ void16 maskGreater(SIMDVer Ver = sseVer, T)(T a, T b)
 				static assert(0, "Unsupported vector type: " ~ T.stringof);
 		}
 		else version(LDC)
-		{
-			mixin(ldcFloatMaskLess!(T.stringof, "b", "a", false));
-		}
+            return ldcGtMask!T(a, b); 
 	}
 	else version(ARM)
 	{
@@ -3619,9 +3637,7 @@ void16 maskGreaterEqual(SIMDVer Ver = sseVer, T)(T a, T b)
 				return or!Ver(cast(void16)maskGreater!Ver(a, b), cast(void16)maskEqual!Ver(a, b)); // compound greater OR equal
 		}
 		else version(LDC)
-		{
-			mixin(ldcFloatMaskLess!(T.stringof, "b", "a", true));
-		}
+            return ldcGeMask!T(a, b); 
 	}
 	else version(ARM)
 	{
@@ -3652,9 +3668,7 @@ void16 maskLess(SIMDVer Ver = sseVer, T)(T a, T b)
 				return maskGreaterEqual!Ver(b, a); // reverse the args
 		}
 		else version(LDC)
-		{
-			mixin(ldcFloatMaskLess!(T.stringof, "a", "b", false));
-		}
+            return ldcGtMask!T(b, a); 
 	}
 	else version(ARM)
 	{
@@ -3685,9 +3699,7 @@ void16 maskLessEqual(SIMDVer Ver = sseVer, T)(T a, T b)
 				return maskGreaterEqual!Ver(b, a); // reverse the args
 		}
 		else version(LDC)
-		{
-			mixin(ldcFloatMaskLess!(T.stringof, "a", "b", true));
-		}
+            return ldcGeMask!T(b, a); 
 	}
 	else version(ARM)
 	{
