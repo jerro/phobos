@@ -111,32 +111,6 @@ version(LDC)
 			alias RepeatType!(T, n - 1, T, R) RepeatType;
 	}
 
-	template llvmInstructions(string v)
-	{
-		enum llvmInstructions = `
-			pragma(shufflevector)
-				`~v~` shufflevector(`~v~`, `~v~`, RepeatType!(int, `~v~`.init.length)) nothrow pure @safe;
-
-			pragma(insertelement)
-				`~v~` insertelement(`~v~`, typeof(`~v~`.init.ptr[0]), int) nothrow pure @safe;
-
-			pragma(extractelement)
-				typeof(`~v~`.init.ptr[0]) extractelement(`~v~`, int) nothrow pure @safe;`;
-	}
-
-	mixin(
-		llvmInstructions!"float4" ~
-		llvmInstructions!"double2" ~
-		llvmInstructions!"ubyte16" ~
-		llvmInstructions!"byte16" ~
-		llvmInstructions!"ushort8" ~
-		llvmInstructions!"short8" ~
-		llvmInstructions!"uint4" ~
-		llvmInstructions!"int4" ~
-		llvmInstructions!"ulong2" ~
-		llvmInstructions!"long2");
-
-
 	version(X86_OR_X64)
 		import ldc.gccbuiltins_x86;
 
@@ -519,6 +493,88 @@ private
 		}
 	}
 
+    version(LDC)
+    {
+        // this should be moved to ldc.something later.
+
+        template llvmType(T)
+        {
+            static if(is(T == float))
+                enum llvmType = "float";
+            else static if(is(T == double))
+                enum llvmType = "double";
+            else static if(is(T == byte) || is(T == ubyte) || is(T == void))
+                enum llvmType = "i8";
+            else static if(is(T == short) || is(T == ushort))
+                enum llvmType = "i16";
+            else static if(is(T == int) || is(T == uint))
+                enum llvmType = "i32";
+            else static if(is(T == long) || is(T == ulong))
+                enum llvmType = "i64";
+            else
+                static assert(0, 
+                    "Can't determine llvm type for D type " ~ T.stringof);
+        } 
+
+        template llvmVecType(V)
+        {
+            alias BaseType!V T;
+            enum int n = NumElements!V;
+            enum llvmT = llvmType!T;
+            enum llvmVecType = "<"~n.stringof~" x "~llvmT~">"; 
+        }
+
+        pragma(llvm_inline_ir)
+            R inlineIR(string s, R, P...)(P);
+
+        template shufflevector(V, mask...)
+        {
+            enum int n = mask.length;
+            enum llvmVec = llvmVecType!V;
+
+            template genMaskIr(string ir, m...)
+            {
+                static if(m.length == 0)
+                    enum genMaskIr = ir;
+                else
+                {
+                    enum int mfront = m[0];            
+
+                    enum genMaskIr = 
+                        genMaskIr!(ir ~ ", i32 " ~ mfront.stringof, m[1 .. $]);
+                }
+            }
+            enum maskIr = genMaskIr!("", mask)[2 .. $]; 
+            enum ir = `
+                %r = shufflevector `~llvmVec~` %0, `~llvmVec~` %1, <`~n.stringof~` x i32> <`~maskIr~`>
+                ret `~llvmVec~` %r`;
+
+            alias inlineIR!(ir, V, V, V) shufflevector;
+        }
+
+        template extractelement(V, int i)
+        {
+            alias llvmType!(BaseType!V) llvmT;
+            enum llvmVec = llvmVecType!V;
+            enum ir = `
+                %r = extractelement `~llvmVec~` %0, i32 `~i.stringof~`
+                ret `~llvmT~` %r`;
+
+            alias inlineIR!(ir, BaseType!V, V) extractelement; 
+        }
+
+        template insertelement(V, int i)
+        {
+            alias llvmType!(BaseType!V) llvmT;
+            enum llvmVec = llvmVecType!V;
+            enum ir = `
+                %r = insertelement `~llvmVec~` %0, `~llvmT~` %1, i32 `~i.stringof~`
+                ret `~llvmVec~` %r`;
+
+            alias inlineIR!(ir, V, V, BaseType!V) insertelement; 
+        }
+
+    }
 }
 
 
@@ -558,7 +614,7 @@ T loadScalar(T, SIMDVer Ver = sseVer)(BaseType!T* pS) if(isVector!T)
 		{
 			//TODO: non-optimal
 			T r = 0;
-			r = insertelement(r, *pS, 0);
+			r = insertelement!(T, 0)(r, *pS);
 			return r;
 		}
 	}
@@ -644,7 +700,7 @@ BaseType!T getScalar(SIMDVer Ver = sseVer, T)(T v) if(isVector!T)
 		}
 		else version(LDC)
 		{
-			return extractelement(v, 0);
+			return extractelement!(T, 0)(v);
 		}
 	}
 	else version(ARM)
@@ -813,7 +869,7 @@ if(isVector!T)
 		else version(LDC)
 		{
 			enum int n = NumElements!T;
-			return shufflevector(v, x, n, staticIota!(1, n));
+			return shufflevector!(T, n, staticIota!(1, n))(v, x);
 		}
 	}
 	else version(ARM)
@@ -858,7 +914,7 @@ if(isVector!T)
 		{
 			enum int n = NumElements!T;
 			static assert(n >= 2);
-			return shufflevector(v, y, 0, n + 1, staticIota!(2, n));
+			return shufflevector!(T, 0, n + 1, staticIota!(2, n))(v, y);
 		}
 	}
 	else version(ARM)
@@ -901,7 +957,7 @@ if(isVector!T)
 		{
 			enum int n = NumElements!T;
 			static assert(n >= 3);
-			return shufflevector(v, z, 0, 1,  n + 2, staticIota!(3, n));
+			return shufflevector!(T, 0, 1,  n + 2, staticIota!(3, n))(v, z);
 		}
 	}
 	else version(ARM)
@@ -944,7 +1000,7 @@ if(isVector!T)
 		{
 			enum int n = NumElements!T;
 			static assert(n >= 4);
-			return shufflevector(v, w, 0, 1, 2, n + 3, staticIota!(4, n));
+			return shufflevector!(T, 0, 1, 2, n + 3, staticIota!(4, n))(v, w);
 		}
 	}
 	else version(ARM)
@@ -1176,7 +1232,7 @@ T swizzle(string swiz, SIMDVer Ver = sseVer, T)(T v)
 			}
 			else version(LDC)
 			{
-				return shufflevector(v, v, toTypeTuple!elements);
+				return shufflevector!(T, toTypeTuple!elements)(v, v);
 			}
 		}
 		else version(ARM)
@@ -1248,9 +1304,10 @@ T interleaveLow(SIMDVer Ver = sseVer, T)(T v1, T v2)
 		else version(LDC)
 		{
 			enum int n = NumElements!T;
-
-			return shufflevector(v1, v2, interleaveTuples!(
-				staticIota!(0, n / 2), staticIota!(n, n + n / 2)));
+            alias interleaveTuples!(
+                staticIota!(0, n / 2), staticIota!(n, n + n / 2)) mask;
+			
+            return shufflevector!(T, mask)(v1, v2);
 		}
 	}
 	else version(ARM)
@@ -1294,9 +1351,10 @@ T interleaveHigh(SIMDVer Ver = sseVer, T)(T v1, T v2)
 		else version(LDC)
 		{
 			enum int n = NumElements!T;
+            alias interleaveTuples!(
+				staticIota!(n / 2, n), staticIota!(n + n / 2, n + n)) mask;
 
-			return shufflevector(v1, v2, interleaveTuples!(
-				staticIota!(n / 2, n), staticIota!(n + n / 2, n + n)));
+            return shufflevector!(T, mask)(v1, v2);
 		}
 	}
 	else version(ARM)
@@ -1359,7 +1417,7 @@ PromotionOf!T unpackLow(SIMDVer Ver = sseVer, T)(T v)
 			alias interleaveTuples!(
 				staticIota!(0, n / 2), staticIota!(n, n + n / 2)) index;
 
-			return cast(PromotionOf!T) shufflevector(v, zero, index);
+			return cast(PromotionOf!T) shufflevector!(T, index)(v, zero);
 		}
 	}
 	else version(ARM)
@@ -1404,7 +1462,7 @@ PromotionOf!T unpackHigh(SIMDVer Ver = sseVer, T)(T v)
 			alias interleaveTuples!(
 				staticIota!(n / 2, n), staticIota!(n + n / 2, n + n)) index;
 
-			return cast(PromotionOf!T) shufflevector(v, zero, index);
+			return cast(PromotionOf!T) shufflevector!(T, index)(v, zero);
 		}
 	}
 	else version(ARM)
@@ -1459,8 +1517,8 @@ DemotionOf!T pack(SIMDVer Ver = sseVer, T)(T v1, T v2)
 			alias DemotionOf!T D;
 			enum int n = NumElements!D;
 
-			return shufflevector(
-				cast(D) v1, cast(D) v2, staticIota!(0, 2 * n, 2));
+			return shufflevector!(D, staticIota!(0, 2 * n, 2))(
+				cast(D) v1, cast(D) v2);
 		}
 	}
 	else version(ARM)
