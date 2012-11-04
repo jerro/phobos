@@ -520,7 +520,7 @@ private
         template shufflevector(V, mask...)
         {
             enum int n = mask.length;
-            enum llvmVec = llvmVecType!V;
+            enum llvmV = llvmVecType!V;
 
             template genMaskIr(string ir, m...)
             {
@@ -536,18 +536,18 @@ private
             }
             enum maskIr = genMaskIr!("", mask)[2 .. $]; 
             enum ir = `
-                %r = shufflevector `~llvmVec~` %0, `~llvmVec~` %1, <`~n.stringof~` x i32> <`~maskIr~`>
-                ret `~llvmVec~` %r`;
+                %r = shufflevector `~llvmV~` %0, `~llvmV~` %1, <`~n.stringof~` x i32> <`~maskIr~`>
+                ret `~llvmV~` %r`;
 
             alias inlineIR!(ir, V, V, V) shufflevector;
         }
 
         template extractelement(V, int i)
         {
-            alias llvmType!(BaseType!V) llvmT;
-            enum llvmVec = llvmVecType!V;
+            enum llvmT = llvmType!(BaseType!V);
+            enum llvmV = llvmVecType!V;
             enum ir = `
-                %r = extractelement `~llvmVec~` %0, i32 `~i.stringof~`
+                %r = extractelement `~llvmV~` %0, i32 `~i.stringof~`
                 ret `~llvmT~` %r`;
 
             alias inlineIR!(ir, BaseType!V, V) extractelement; 
@@ -555,13 +555,26 @@ private
 
         template insertelement(V, int i)
         {
-            alias llvmType!(BaseType!V) llvmT;
-            enum llvmVec = llvmVecType!V;
+            enum llvmT = llvmType!(BaseType!V);
+            enum llvmV = llvmVecType!V;
             enum ir = `
-                %r = insertelement `~llvmVec~` %0, `~llvmT~` %1, i32 `~i.stringof~`
-                ret `~llvmVec~` %r`;
+                %r = insertelement `~llvmV~` %0, `~llvmT~` %1, i32 `~i.stringof~`
+                ret `~llvmV~` %r`;
 
             alias inlineIR!(ir, V, V, BaseType!V) insertelement; 
+        }
+
+        template ldcLoadUnaligned(V)
+        {
+            alias BaseType!V T;
+            enum llvmT = llvmType!T;
+            enum llvmV = llvmVecType!V;
+            enum ir = `
+                %p = bitcast `~llvmT~`* %0 to `~llvmV~`*
+                %r = load `~llvmV~`* %p, align 1
+                ret `~llvmV~` %r`;
+
+            alias inlineIR!(ir, V, T*) ldcLoadUnaligned; 
         }
 
         enum Cond{ eq, ne, gt, ge }
@@ -571,7 +584,7 @@ private
             template ldcCmpMask(V)
             {
                 alias BaseType!V T;
-                alias llvmType!T llvmT;
+                enum llvmT = llvmType!T;
                 
                 static if(is(T == float))
                     alias int Relem;
@@ -583,8 +596,8 @@ private
                 enum int n = NumElements!V;
                 alias Vector!(Relem[n]) R;
 
-                enum llvmVec = llvmVecType!V;
-                enum llvmRVec = llvmVecType!R;
+                enum llvmV = llvmVecType!V;
+                enum llvmR = llvmVecType!R;
                 enum sign = 
                     (cond == Cond.eq || cond == Cond.ne) ? "" : 
                     isSigned!T ? "s" : "u";
@@ -596,9 +609,9 @@ private
                     isFloatingPoint!T ? "fcmp o"~condStr : "icmp "~sign~condStr;
                 
                 enum ir = `
-                    %cmp = `~op~` `~llvmVec~` %0, %1
-                    %r = sext <`~n.stringof~` x i1> %cmp to `~llvmRVec~`
-                    ret `~llvmRVec~` %r`;
+                    %cmp = `~op~` `~llvmV~` %0, %1
+                    %r = sext <`~n.stringof~` x i1> %cmp to `~llvmR~`
+                    ret `~llvmR~` %r`;
 
                 alias inlineIR!(ir, R, V, V) ldcCmpMask;
             }
@@ -681,17 +694,7 @@ T loadUnaligned(T, SIMDVer Ver = sseVer)(BaseType!T* pV) @trusted
 				return cast(Vector!T)__builtin_ia32_loaddqu(cast(char*)pV);
 		}
 		else version(LDC)
-		{
-			union U
-			{
-				T v;
-				ArrayType!T a;
-			}
-
-			U u;
-			u.a = *cast(ArrayType!(T)*) pV;
-			return u.v;
-		}
+            return ldcLoadUnaligned!T(pV);
 	}
 	else version(ARM)
 	{
