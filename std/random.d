@@ -1600,9 +1600,9 @@ private auto zigguratInitialize(T)
 {
     auto zigguratInnerWidth(int i, int nlayers, T totalArea)
     {
-        auto ai = totalArea * (cast(T)(nlayers - (i + 1)) + cast(T)0.5) / (nlayers);
+        auto ai = totalArea * (cast(T)(nlayers - (i + 1))) / nlayers;
         auto func = (T x) => fint(x) - x * f(x) - ai; 
-     
+
         T x0 = 0;
         T x1= 1;
         while(func(x1) < 0)
@@ -1636,17 +1636,7 @@ private auto zigguratInitialize(T)
         T dx = xprev - x;
         T scaleY = dy / dx;
         
-        if(i == 0)
-        {
-            layers[i] = L(0, 2, T.nan, T.nan);
-            tailX = x;
-            tailXInterval = xInterval / 2;
-        }
-        else
-        {
-            auto tmp = zigguratOffsets(x, xprev);
-            layers[i] = L(x, xInterval, tmp[0] / dx, tmp[1] / dx);
-        }
+        layers[i] = L(x, xInterval, T.init, T.init);
  
         yprev = y;
         xprev = x;
@@ -1671,41 +1661,19 @@ private auto zigguratAlgorithmImpl
 
     if(layer == 0)
     {
-        if(x < cast(T) 1)
-        {
-            x *= zs.tailXInterval;
-            return x < zs.tailX ? x : tail(zs.tailX, rng);
-        }
-        else 
-            return head(x - 1, rng);
+        return tail(layerX, rng);
     }
 
-    T belowX = layer == 1 ? zs.tailX : zs.layers[layer - 1].x;
+    T belowX = zs.layers[layer - 1].x;
     T dx = belowX - layerX;
-    T highOffset = zs.layers[layer].highOffset;
-    T lowOffset = zs.layers[layer].lowOffset;
-    T uInterval = 1 + highOffset;
-
+    T layerY = f(layerX);
+    T dy = layerY - f(layerX + dx);
+    
     while(true)
     {
-        T uy = uInterval * fastUniformFloat!T(rng);
-        T ux = uInterval * fastUniformFloat!T(rng);
-      
-        T tmp = max(ux, uy);
-        ux = min(ux, uy);
-        uy = highOffset - tmp;
+        x = layerX + fastUniformFloat!T(rng) * dx; 
+        T y = layerY - fastUniformFloat!T(rng) * dy;
 
-        x = layerX + ux * dx;
-
-        if(uy > 0 || ux > 1)
-            continue; 
-
-        if(uy < lowOffset - ux)
-            return x;
-     
-        T layerY = f(layerX);
-        T dy = layerY - f(layerX + dx);
-        T y = layerY + uy * dy;
         if(y < f(x))
             return x;
     }
