@@ -1600,9 +1600,9 @@ private auto zigguratInitialize(T)
 {
     auto zigguratInnerWidth(int i, int nlayers, T totalArea)
     {
-        auto ai = totalArea * (cast(T)(nlayers - (i + 1)) + cast(T)0.5) / (nlayers);
+        auto ai = totalArea * (cast(T)(nlayers - (i + 1)) + cast(T)0.5) / nlayers;
         auto func = (T x) => fint(x) - x * f(x) - ai; 
-     
+
         T x0 = 0;
         T x1= 1;
         while(func(x1) < 0)
@@ -1610,7 +1610,7 @@ private auto zigguratInitialize(T)
 
         return findRoot(func, x0, x1);
     }
-    
+
     auto zigguratOffsets(T x0, T x1)
     {
         auto y0 = f(x0), y1 = f(x1);
@@ -1635,7 +1635,7 @@ private auto zigguratInitialize(T)
         T xInterval = x * (totalArea / nlayers) / innerArea;
         T dx = xprev - x;
         T scaleY = dy / dx;
-        
+
         if(i == 0)
         {
             layers[i] = L(0, 2, T.nan, T.nan);
