@@ -1390,6 +1390,7 @@ if (isFloatingPoint!T)
         _sigma = sigma;
 
         static if(is(typeof(_engine.initialize())))
+            foreach(i; 0 .. 1000)
             _engine.initialize();
     }
 
@@ -1509,6 +1510,20 @@ private T fastUniformFloat(T, Rng)(ref Rng r)
     
     r.popFront();
     return x;
+}
+
+T accurateUniformFloat(T, Rng)(T upper, ref Rng r)
+{
+    int exp = void;
+    T x = frexp(upper, exp);
+  
+    while(true)
+    {
+        auto sample = fastUniformFloat!T(r);
+        //auto sample = uniform(0, 1.to!T, r);
+        if(sample < x)
+            return ldexp(sample, exp);
+    }
 }
 
 private int fastUniformInt(int n, Rng)(ref Rng r)
@@ -1666,7 +1681,9 @@ private auto zigguratAlgorithmImpl
 {
     alias ReturnType!f T;
     
-    x *= zs.layers[layer].xInterval;
+    //x *= zs.layers[layer].xInterval;
+    x = accurateUniformFloat(zs.layers[layer].xInterval, rng);
+    //x = fastUniformFloat!T(rng) * zs.layers[layer].xInterval;
     T layerX = zs.layers[layer].x;
     if(x < layerX)
         return x;
@@ -1731,7 +1748,7 @@ private auto zigguratAlgorithm
         }
         else static if(is(T == double) && is(size_t == ulong))
         {
-            auto rint = (rand << 63) ^ *cast(ulong*) &r;
+            auto rint = (cast(ulong)rand << 63) ^ *cast(ulong*)&r;
             return *cast(T*) &rint;
         }
         else
@@ -1822,7 +1839,8 @@ template NormalZigguratEngineImpl(int n)
     }
 }
 
-alias NormalZigguratEngineImpl!128  NormalZigguratEngine64;
+alias NormalZigguratEngineImpl!128  NormalZigguratEngine128;
+alias NormalZigguratEngineImpl!32  NormalZigguratEngine32;
 
 /**
 Shuffles elements of $(D r) using $(D gen) as a shuffler. $(D r) must be
