@@ -323,12 +323,11 @@ private:
         string decl = "";
         foreach (i, name; staticMap!(extractName, fieldSpecs))
         {
-            enum    field = Format!("Identity!(field[%s])",i);
-            enum numbered = Format!("_%s", i);
-            decl ~= Format!("alias %s %s;", field, numbered);
+            enum numbered = toStringNow!(i);
+            decl ~= "alias Identity!(field[" ~ numbered ~ "]) _" ~ numbered ~ ";";
             if (name.length != 0)
             {
-                decl ~= Format!("alias %s %s;", numbered, name);
+                decl ~= "alias _" ~ numbered ~ " " ~ name ~ ";";
             }
         }
         return decl;
@@ -588,7 +587,7 @@ unittest
         nosh[0] = 5;
         nosh[1] = 0;
         assert(nosh[0] == 5 && nosh[1] == 0);
-        assert(nosh.toString() == "Tuple!(int,real)(5, 0)", nosh.toString());
+        assert(nosh.toString() == "Tuple!(int, real)(5, 0)", nosh.toString());
         Tuple!(int, int) yessh;
         nosh = yessh;
     }
@@ -597,7 +596,7 @@ unittest
         t[0] = 10;
         t[1] = "str";
         assert(t[0] == 10 && t[1] == "str");
-        assert(t.toString() == `Tuple!(int,string)(10, "str")`, t.toString());
+        assert(t.toString() == `Tuple!(int, string)(10, "str")`, t.toString());
     }
     {
         Tuple!(int, "a", double, "b") x;
@@ -2320,7 +2319,7 @@ private static:
      * Returns D code which declares function parameters.
      * "ref int a0, real a1, ..."
      */
-    private string generateParameters(string myFuncInfo, func...)() @property
+    private string generateParameters(string myFuncInfo, func...)()
     {
         alias ParameterStorageClass STC;
         alias ParameterStorageClassTuple!(func) stcs;
@@ -2467,42 +2466,24 @@ struct RefCounted(T, RefCountedAutoInitialize autoInit =
         RefCountedAutoInitialize.yes)
 if (!is(T == class))
 {
-    struct _RefCounted
+    /// $(D RefCounted) storage implementation.
+    struct RefCountedStore
     {
-        private Tuple!(T, "_payload", size_t, "_count") * _store;
-        debug(RefCounted)
+        private struct Impl
         {
-            private bool _debugging = false;
-            @property bool debugging() const
-            {
-                return _debugging;
-            }
-            @property void debugging(bool d)
-            {
-                if (d != _debugging)
-                {
-                    writeln(typeof(this).stringof, "@",
-                            cast(void*) _store,
-                            d ? ": starting debug" : ": ending debug");
-                }
-                _debugging = d;
-            }
+            T _payload;
+            size_t _count;
         }
 
-        private void initialize(A...)(A args)
+        private Impl* _store;
+
+        private void initialize(A...)(auto ref A args)
         {
-            const sz = (*_store).sizeof;
-            auto p = malloc(sz)[0 .. sz];
-            if (sz >= size_t.sizeof && p.ptr)
-            {
-                GC.addRange(p.ptr, sz);
-            }
-            emplace(cast(T*) p.ptr, args);
-            _store = cast(typeof(_store)) p.ptr;
+            _store = cast(Impl*) enforce(malloc(Impl.sizeof));
+            static if (hasIndirections!T)
+                GC.addRange(&_store._payload, T.sizeof);
+            emplace(&_store._payload, args);
             _store._count = 1;
-            debug(RefCounted) if (debugging) writeln(typeof(this).stringof,
-                "@", cast(void*) _store, ": initialized with ",
-                    A.stringof);
         }
 
         /**
@@ -2516,6 +2497,16 @@ if (!is(T == class))
         }
 
         /**
+           Returns underlying reference count if it is allocated and initialized
+           (a positive integer), and $(D 0) otherwise.
+        */
+        @property nothrow @safe
+        size_t refCount() const
+        {
+            return isInitialized ? _store._count : 0;
+        }
+
+        /**
            Makes sure the payload was properly initialized. Such a
            call is typically inserted before using the payload.
         */
@@ -2525,16 +2516,23 @@ if (!is(T == class))
         }
 
     }
-    _RefCounted RefCounted;
+    RefCountedStore _refCounted;
+
+    /// Returns storage implementation struct.
+    @property nothrow @safe
+    ref inout(RefCountedStore) refCountedStore() inout
+    {
+        return _refCounted;
+    }
 
 /**
 Constructor that initializes the payload.
 
 Postcondition: $(D refCountedIsInitialized)
  */
-    this(A...)(A args) if (A.length > 0)
+    this(A...)(auto ref A args) if (A.length > 0)
     {
-        RefCounted.initialize(args);
+        _refCounted.initialize(args);
     }
 
 /**
@@ -2543,12 +2541,8 @@ Constructor that tracks the reference count appropriately. If $(D
  */
     this(this)
     {
-        if (!RefCounted.isInitialized) return;
-        ++RefCounted._store._count;
-        debug(RefCounted) if (RefCounted.debugging)
-                 writeln(typeof(this).stringof,
-                "@", cast(void*) RefCounted._store, ": bumped refcount to ",
-                RefCounted._store._count);
+        if (!_refCounted.isInitialized) return;
+        ++_refCounted._store._count;
     }
 
 /**
@@ -2559,30 +2553,16 @@ to deallocate the corresponding resource.
  */
     ~this()
     {
-        if (!RefCounted._store) return;
-        assert(RefCounted._store._count > 0);
-        if (--RefCounted._store._count)
-        {
-            debug(RefCounted) if (RefCounted.debugging)
-                     writeln(typeof(this).stringof,
-                    "@", cast(void*)RefCounted._store,
-                    ": decrement refcount to ", RefCounted._store._count);
+        if (!_refCounted.isInitialized) return;
+        assert(_refCounted._store._count > 0);
+        if (--_refCounted._store._count)
             return;
-        }
-        debug(RefCounted) if (RefCounted.debugging)
-        {
-            write(typeof(this).stringof,
-                    "@", cast(void*)RefCounted._store, ": freeing... ");
-            stdout.flush();
-        }
         // Done, deallocate
-        assert(RefCounted._store);
-        .destroy(RefCounted._store._payload);
-        if (hasIndirections!T && RefCounted._store)
-            GC.removeRange(RefCounted._store);
-        free(RefCounted._store);
-        RefCounted._store = null;
-        debug(RefCounted) if (RefCounted.debugging) writeln("done!");
+        .destroy(_refCounted._store._payload);
+        static if (hasIndirections!T)
+            GC.removeRange(&_refCounted._store._payload);
+        free(_refCounted._store);
+        _refCounted._store = null;
     }
 
 /**
@@ -2590,7 +2570,7 @@ Assignment operators
  */
     void opAssign(typeof(this) rhs)
     {
-        swap(RefCounted._store, rhs.RefCounted._store);
+        swap(_refCounted._store, rhs._refCounted._store);
     }
 
 /// Ditto
@@ -2598,13 +2578,13 @@ Assignment operators
     {
         static if (autoInit == RefCountedAutoInitialize.yes)
         {
-            RefCounted.ensureInitialized();
+            _refCounted.ensureInitialized();
         }
         else
         {
-            assert(RefCounted.isInitialized);
+            assert(_refCounted.isInitialized);
         }
-        move(rhs, RefCounted._store._payload);
+        move(rhs, _refCounted._store._payload);
     }
 
     //version to have a single properly ddoc'ed function (w/ correct sig)
@@ -2618,11 +2598,17 @@ Assignment operators
         refCountedPayload this;), so callers can just use the $(D RefCounted)
         object as a $(D T).
 
-        If $(D autoInit == RefCountedAutoInitialize.no), then
+        $(BLUE The first overload exists only if $(D autoInit == RefCountedAutoInitialize.yes).)
+        So if $(D autoInit == RefCountedAutoInitialize.no)
+        or called for a constant or immutable object, then
         $(D refCountedPayload) will also be qualified as safe and nothrow
         (but will still assert if not initialized).
          */
         @property
+        ref T refCountedPayload();
+
+        /// ditto
+        @property nothrow @safe
         ref inout(T) refCountedPayload() inout;
     }
     else
@@ -2633,27 +2619,16 @@ Assignment operators
             @property
             ref T refCountedPayload()
             {
-                RefCounted.ensureInitialized();
-                return RefCounted._store._payload;
-            }
-
-            @property nothrow @safe
-            ref const(T) refCountedPayload() const
-            {
-                // @@@
-                //refCounted.ensureInitialized();
-                assert(RefCounted.isInitialized);
-                return RefCounted._store._payload;
+                _refCounted.ensureInitialized();
+                return _refCounted._store._payload;
             }
         }
-        else
+
+        @property nothrow @safe
+        ref inout(T) refCountedPayload() inout
         {
-            @property nothrow @safe
-            ref inout(T) refCountedPayload() inout
-            {
-                assert(RefCounted.isInitialized);
-                return RefCounted._store._payload;
-            }
+            assert(_refCounted.isInitialized);
+            return _refCounted._store._payload;
         }
     }
 
@@ -2673,18 +2648,18 @@ unittest
         auto rc1 = RefCounted!int(5);
         p = &rc1;
         assert(rc1 == 5);
-        assert(rc1.RefCounted._store._count == 1);
+        assert(rc1._refCounted._store._count == 1);
         auto rc2 = rc1;
-        assert(rc1.RefCounted._store._count == 2);
+        assert(rc1._refCounted._store._count == 2);
         // Reference semantics
         rc2 = 42;
         assert(rc1 == 42);
         rc2 = rc2;
-        assert(rc2.RefCounted._store._count == 2);
+        assert(rc2._refCounted._store._count == 2);
         rc1 = rc2;
-        assert(rc1.RefCounted._store._count == 2);
+        assert(rc1._refCounted._store._count == 2);
     }
-    assert(p.RefCounted._store == null);
+    assert(p._refCounted._store == null);
 
     // RefCounted as a member
     struct A
@@ -2692,7 +2667,7 @@ unittest
         RefCounted!int x;
         this(int y)
         {
-            x.RefCounted.initialize(y);
+            x._refCounted.initialize(y);
         }
         A copy()
         {
@@ -2702,7 +2677,7 @@ unittest
     }
     auto a = A(4);
     auto b = a.copy();
-    assert(a.x.RefCounted._store._count == 2, "BUG 4356 still unfixed");
+    assert(a.x._refCounted._store._count == 2, "BUG 4356 still unfixed");
 }
 
 unittest
@@ -2724,6 +2699,16 @@ unittest
     }
 
     alias RefCounted!S SRC;
+}
+
+// 6436
+unittest
+{
+    struct S { this(ref int val) { assert(val == 3); ++val; } }
+
+    int val = 3;
+    auto s = RefCounted!S(val);
+    assert(val == 4);
 }
 
 unittest
@@ -2836,7 +2821,7 @@ mixin template Proxy(alias a)
         static if (is(typeof(__traits(getMember, a, name)) == function))
         {
             // non template function
-            auto ref opDispatch(this X, Args...)(Args args) { return mixin("a."~name~"(args)"); }
+            auto ref opDispatch(this X, Args...)(auto ref Args args) { return mixin("a."~name~"(args)"); }
         }
         else static if (is(typeof(mixin("a."~name))) || __traits(getOverloads, a, name).length != 0)
         {
@@ -2849,7 +2834,7 @@ mixin template Proxy(alias a)
             // member template
             template opDispatch(T...)
             {
-                auto ref opDispatch(this X, Args...)(Args args){ return mixin("a."~name~"!T(args)"); }
+                auto ref opDispatch(this X, Args...)(auto ref Args args){ return mixin("a."~name~"!T(args)"); }
             }
         }
     }
@@ -2929,6 +2914,7 @@ unittest
         @property ref int val2(){ return field; }
 
         const int func(int x, int y){ return x; }
+        void func1(ref int a){ a = 9; }
 
         T opCast(T)(){ return T.init; }
 
@@ -2970,6 +2956,8 @@ unittest
 
     // member function
     assert(h.func(2,4) == 2);
+    h.func1(n);
+    assert(n == 9);
 
     // bug5896 test
     assert(h.opCast!int() == 0);
@@ -3083,27 +3071,31 @@ unittest
 }
 ----
  */
-@system auto scoped(T, Args...)(Args args) if (is(T == class))
+@system auto scoped(T, Args...)(auto ref Args args) if (is(T == class))
 {
+    // _d_newclass now use default GC alignment (looks like (void*).sizeof * 2 for
+    // small objects). We will just use the maximum of filed alignments.
+    alias classInstanceAlignment!T alignment;
+    alias _alignUp!alignment aligned;
+
     static struct Scoped(T)
     {
-        private
-        {
-            // _d_newclass now use default GC alignment (looks like (void*).sizeof * 2 for
-            // small objects). We will just use the maximum of filed alignments.
-            alias maxAlignment!(void*, typeof(T.tupleof)) alignment;
+        // Addition of `alignment` is required as `Scoped_store` can be misaligned in memory.
+        private void[aligned(__traits(classInstanceSize, T) + size_t.sizeof) + alignment] Scoped_store = void;
 
-            static size_t aligned(size_t n)
-            {
-                enum badEnd = alignment - 1; // 0b11, 0b111, ...
-                return (n + badEnd) & ~badEnd;
-            }
-
-            void[aligned(__traits(classInstanceSize, T)) + alignment] Scoped_store = void;
-        }
         @property inout(T) Scoped_payload() inout
         {
-            return cast(inout(T)) cast(void*) aligned(cast(size_t) Scoped_store.ptr);
+            void* alignedStore = cast(void*) aligned(cast(size_t) Scoped_store.ptr);
+            // As `Scoped` can be unaligned moved in memory class instance should be moved accordingly.
+            immutable size_t d = alignedStore - Scoped_store.ptr;
+            size_t* currD = cast(size_t*) &Scoped_store[$ - size_t.sizeof];
+            if(d != *currD)
+            {
+                import core.stdc.string;
+                memmove(alignedStore, Scoped_store.ptr + *currD, __traits(classInstanceSize, T));
+                *currD = d;
+            }
+            return cast(inout(T)) alignedStore;
         }
         alias Scoped_payload this;
 
@@ -3121,16 +3113,17 @@ unittest
     }
 
     Scoped!T result;
-    emplace!(Unqual!T)(cast(void[])result.Scoped_store, args);
+    immutable size_t d = cast(void*) result.Scoped_payload - result.Scoped_store.ptr;
+    *cast(size_t*) &result.Scoped_store[$ - size_t.sizeof] = d;
+    emplace!(Unqual!T)(result.Scoped_store[d .. $ - size_t.sizeof], args);
     return result;
 }
 
-private template maxAlignment(U...) if(isTypeTuple!U)
+private size_t _alignUp(size_t alignment)(size_t n)
+    if(alignment > 0 && !((alignment - 1) & alignment))
 {
-    static if(U.length == 1)
-        enum maxAlignment = U[0].alignof;
-    else
-        enum maxAlignment = max(U[0].alignof, .maxAlignment!(U[1 .. $]));
+    enum badEnd = alignment - 1; // 0b11, 0b111, ...
+    return (n + badEnd) & ~badEnd;
 }
 
 unittest // Issue 6580 testcase
@@ -3149,18 +3142,26 @@ unittest // Issue 6580 testcase
     static assert(scoped!C7().sizeof % alignment == 0);
 
     enum longAlignment = long.alignof;
-    static class C1long { long l; byte b; }
-    static class C2long { byte[2] b; long l; }
+    static class C1long
+    {
+        long long_; byte byte_ = 4;
+        this() { }
+        this(long _long, ref int i) { long_ = _long; ++i; }
+    }
+    static class C2long { byte[2] byte_ = [5, 6]; long long_ = 7; }
     static assert(scoped!C1long().sizeof % longAlignment == 0);
     static assert(scoped!C2long().sizeof % longAlignment == 0);
 
     void alignmentTest()
     {
-        // Enshure `forAlignmentOnly` field really helps
-        auto c1long = scoped!C1long();
+        int var = 5;
+        auto c1long = scoped!C1long(3, var);
+        assert(var == 6);
         auto c2long = scoped!C2long();
-        assert(cast(size_t)&c1long.l % longAlignment == 0);
-        assert(cast(size_t)&c2long.l % longAlignment == 0);
+        assert(cast(size_t)&c1long.long_ % longAlignment == 0);
+        assert(cast(size_t)&c2long.long_ % longAlignment == 0);
+        assert(c1long.long_ == 3 && c1long.byte_ == 4);
+        assert(c2long.byte_ == [5, 6] && c2long.long_ == 7);
     }
 
     alignmentTest();
@@ -3343,6 +3344,15 @@ unittest
     static assert(is(typeof(c3.foo) == immutable(int)));
 }
 
+unittest
+{
+    class C { this(ref int val) { assert(val == 3); ++val; } }
+
+    int val = 3;
+    auto s = scoped!C(val);
+    assert(val == 4);
+}
+
 /**
 Defines a simple, self-documenting yes/no flag. This makes it easy for
 APIs to define functions accepting flags without resorting to $(D
@@ -3413,8 +3423,8 @@ template Flag(string name) {
 }
 
 /**
-Convenience names that allow using e.g. $(D yes!"encryption") instead of
-$(D Flag!"encryption".yes) and $(D no!"encryption") instead of $(D
+Convenience names that allow using e.g. $(D Yes.encryption) instead of
+$(D Flag!"encryption".yes) and $(D No.encryption) instead of $(D
 Flag!"encryption".no).
 */
 struct Yes

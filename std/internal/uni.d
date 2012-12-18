@@ -21,6 +21,13 @@ public:
         insertInPlace(arr, idx, items);
 }
 
+//ditto + nothing better in std.algo for overlapping arrays anyway
+@trusted void copyForwardAlt(T)(T[] src, T[] dest)
+{
+    for(size_t i = 0; i < src.length; i++)
+        dest[i] = src[i];
+}
+
 //ditto
 @trusted void replaceInPlaceAlt(T)(ref T[] arr, size_t from, size_t to, T[] items...)
 in
@@ -633,7 +640,7 @@ unittest
 @system unittest
 {
     import std.conv, std.random, std.range;
-    immutable seed = unpredictableSeed();
+    immutable seed = unpredictableSeed;
     auto rnd = Random(seed);
 
     auto testCases = randomSample(unicodeProperties, 10, rnd);

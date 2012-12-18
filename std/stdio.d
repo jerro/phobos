@@ -575,6 +575,7 @@ $(D rawWrite) always writes in binary mode on Windows.
                         _name, "'"));
     }
 
+    version(Win64) {} else
     unittest
     {
         auto deleteme = testFilename();
@@ -606,6 +607,7 @@ file handle. Throws on error.
         }
     }
 
+    version(Win64) {} else
     unittest
     {
         auto deleteme = testFilename();
@@ -851,7 +853,7 @@ with every line.  */
     size_t readln(C, R)(ref C[] buf, R terminator)
         if (isBidirectionalRange!R && is(typeof(terminator.front == buf[0])))
     {
-        auto last = terminator.back();
+        auto last = terminator.back;
         C[] buf2;
         swap(buf, buf2);
         for (;;) {

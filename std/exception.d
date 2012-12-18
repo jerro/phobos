@@ -817,7 +817,11 @@ enum emptyExceptionMsg = "<Empty Exception Message>";
  * assumeUnique) is simple and rare enough to be tolerable.
  *
  */
-
+immutable(T)[] assumeUnique(T)(T[] array) pure nothrow
+{
+    return .assumeUnique(array);    // call ref version
+}
+/// ditto
 immutable(T)[] assumeUnique(T)(ref T[] array) pure nothrow
 {
     auto result = cast(immutable(T)[]) array;
@@ -850,10 +854,16 @@ version(none) unittest
 /**
 Returns $(D true) if $(D source)'s representation embeds a pointer
 that points to $(D target)'s representation or somewhere inside
-it. Note that evaluating $(D pointsTo(x, x)) checks whether $(D x) has
-internal pointers.
+it.
+
+Note that evaluating $(D pointsTo(x, x)) checks whether $(D x) has
+internal pointers. This should only be done as an assertive test,
+as the language is free to assume objects don't have internal pointers
+(TDPL 7.1.3.5).
 */
-bool pointsTo(S, T, Tdummy=void)(ref const S source, ref const T target) @trusted pure nothrow
+bool pointsTo(S, T, Tdummy=void)(auto ref const S source, auto ref const T target) @trusted pure nothrow
+    if ((__traits(isRef, source) || isDynamicArray!S) &&    // lvalue or slice rvalue
+        (__traits(isRef, target) || isDynamicArray!T))      // lvalue or slice rvalue
 {
     static if (is(S P : U*, U))
     {
@@ -864,13 +874,16 @@ bool pointsTo(S, T, Tdummy=void)(ref const S source, ref const T target) @truste
     else static if (is(S == struct))
     {
         foreach (i, Subobj; typeof(source.tupleof))
-        {
-            static if (!isStaticArray!(Subobj))
-                if (pointsTo(source.tupleof[i], target)) return true;
-        }
+            if (pointsTo(source.tupleof[i], target)) return true;
         return false;
     }
-    else static if (isArray!(S))
+    else static if (isStaticArray!S)
+    {
+        foreach (size_t i; 0 .. S.length)
+            if (pointsTo(source[i], target)) return true;
+        return false;
+    }
+    else static if (isDynamicArray!S)
     {
         return overlap(cast(void[])source, cast(void[])(&target)[0 .. 1]).length != 0;
     }
@@ -882,10 +895,8 @@ bool pointsTo(S, T, Tdummy=void)(ref const S source, ref const T target) @truste
 // for shared objects
 bool pointsTo(S, T)(ref const shared S source, ref const shared T target) @trusted pure nothrow
 {
-    alias pointsTo!(shared(S), shared(T), void) ptsTo;  // do instantiate explicitly
-    return ptsTo(source, target);
+    return pointsTo!(shared S, shared T, void)(source, target);
 }
-
 unittest
 {
     struct S1 { int a; S1 * b; }
@@ -924,16 +935,65 @@ unittest
     assert(pointsTo(sh3sub, sh3));
 
     int[] darr = [1, 2, 3, 4];
+
+    //dynamic arrays don't point to each other, or slices of themselves
+    assert(!pointsTo(darr, darr));
+    assert(!pointsTo(darr, darr[0 .. 1]));
+    assert(!pointsTo(darr[0 .. 1], darr));
+
+    //But they do point their elements
     foreach(i; 0 .. 4)
         assert(pointsTo(darr, darr[i]));
     assert(pointsTo(darr[0..3], darr[2]));
     assert(!pointsTo(darr[0..3], darr[3]));
+}
 
-    int[4] sarr = [1, 2, 3, 4];
-    foreach(i; 0 .. 4)
-        assert(pointsTo(sarr, sarr[i]));
-    assert(pointsTo(sarr[0..3], sarr[2]));
-    assert(!pointsTo(sarr[0..3], sarr[3]));
+unittest
+{
+    //tests with static arrays
+    //Static arrays themselves are just objects, and don't really *point* to anything.
+    //They aggregate their contents, much the same way a structure aggregates its attributes.
+    //*However* The elements inside the static array may themselves point to stuff.
+
+    //Standard array
+    int[2] k;
+    assert(!pointsTo(k, k)); //an array doesn't point to itself
+    //Technically, k doesn't point its elements, although it does alias them
+    assert(!pointsTo(k, k[0]));
+    assert(!pointsTo(k, k[1]));
+    //But an extracted slice will point to the same array.
+    assert(pointsTo(k[], k));
+    assert(pointsTo(k[], k[1]));
+
+    //An array of pointers
+    int*[2] pp;
+    int a;
+    int b;
+    pp[0] = &a;
+    assert( pointsTo(pp, a));  //The array contains a pointer to a
+    assert(!pointsTo(pp, b));  //The array does NOT contain a pointer to b
+    assert(!pointsTo(pp, pp)); //The array does not point itslef
+
+    //A struct containing a static array of pointers
+    static struct S
+    {
+        int*[2] p;
+    }
+    S s;
+    s.p[0] = &a;
+    assert( pointsTo(s, a)); //The struct contains an array that points a
+    assert(!pointsTo(s, b)); //But doesn't point b
+    assert(!pointsTo(s, s)); //The struct doesn't actually point itslef.
+
+    //An array containing structs that have pointers
+    static struct SS
+    {
+        int* p;
+    }
+    SS[2] ss = [SS(&a), SS(null)];
+    assert( pointsTo(ss, a));  //The array contains a struct that points to a
+    assert(!pointsTo(ss, b));  //The array doesn't contains a struct that points to b
+    assert(!pointsTo(ss, ss)); //The array doesn't point itself.
 }
 
 /*********************
@@ -944,7 +1004,7 @@ class ErrnoException : Exception
     uint errno;                 // operating system error code
     this(string msg, string file = null, size_t line = 0)
     {
-        errno = .errno();
+        errno = .errno;
         version (linux)
         {
             char[1024] buf = void;

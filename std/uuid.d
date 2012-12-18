@@ -367,7 +367,8 @@ public struct UUID
                     {
                         try
                         {
-                            data2[element++] = parse!ubyte(uuid[pairStart .. pos+1], 16);
+                            auto part = uuid[pairStart .. pos+1];
+                            data2[element++] = parse!ubyte(part, 16);
                             pairStart = -1;
                         }
                         catch(Exception e)
@@ -1074,7 +1075,7 @@ unittest
  * //provide a custom RNG. Must be seeded manually.
  * Xorshift192 gen;
  *
- * gen.seed(unpredictableSeed());
+ * gen.seed(unpredictableSeed);
  * auto uuid3 = randomUUID(gen);
  * ------------------------------------------
  */
@@ -1103,7 +1104,7 @@ UUID randomUUID(RNG)(ref RNG randomGen) if(isUniformRNG!(RNG) &&
     {
         randomGen.popFront();
         immutable randomValue = randomGen.front;
-        u.data[i .. i + elemSize] = *cast(ubyte[elemSize]*)&randomValue;
+        u.data[i .. i + elemSize] = (*cast(ubyte[elemSize]*)&randomValue)[];
     }
 
     //set variant
@@ -1127,7 +1128,7 @@ unittest
 
     //provide a custom RNG. Must be seeded manually.
     Xorshift192 gen;
-    gen.seed(unpredictableSeed());
+    gen.seed(unpredictableSeed);
     auto uuid3 = randomUUID(gen);
 
     auto u1 = randomUUID();
@@ -1275,7 +1276,8 @@ UUID parseUUID(Range)(ref Range uuidRange) if(isInputRange!Range
                         parserError(consumed, UUIDParsingException.Reason.tooLittle,
                             "Insufficient Input");
                     }
-                    result.data[element++] = parse!ubyte(uuidRange[0 .. 2], 16);
+                    auto part = uuidRange[0 .. 2];
+                    result.data[element++] = parse!ubyte(part, 16);
                     uuidRange.popFront();
                 }
                 else
@@ -1289,7 +1291,8 @@ UUID parseUUID(Range)(ref Range uuidRange) if(isInputRange!Range
                             "Insufficient Input");
                     }
                     copyBuf[1] = uuidRange.front;
-                    result.data[element++] = parse!ubyte(copyBuf[], 16);
+                    auto part = copyBuf[];
+                    result.data[element++] = parse!ubyte(part, 16);
                 }
 
                 if(element == 16)
