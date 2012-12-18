@@ -1703,8 +1703,8 @@ private auto zigguratAlgorithmImpl
 
     while(true)
     {
-        T uy = uInterval * fastUniformFloat!T(rng);
-        T ux = uInterval * fastUniformFloat!T(rng);
+        T uy = accurateUniformFloat!T(uInterval, rng);
+        T ux = accurateUniformFloat!T(uInterval, rng);
       
         T tmp = max(ux, uy);
         ux = min(ux, uy);
