@@ -3,7 +3,7 @@
   $(LUCKY Regular expressions) are a commonly used method of pattern matching
   on strings, with $(I regex) being a catchy word for a pattern in this domain
   specific language. Typical problems usually solved by regular expressions
-  include validation of user input and ubiquitous find & replace
+  include validation of user input and the ubiquitous find & replace
   in text processing utilities.
 
   Synposis:
@@ -12,31 +12,31 @@
   import std.stdio;
   void main()
   {
-      //print out all possible dd/mm/yy(yy) dates found in user input
-      //g - global, find all matches
+      // Print out all possible dd/mm/yy(yy) dates found in user input.
+      // g - global: find all matches.
       auto r = regex(r"\b[0-9][0-9]?/[0-9][0-9]?/[0-9][0-9](?:[0-9][0-9])?\b", "g");
       foreach(line; stdin.byLine)
       {
-        //match returns a range that can be iterated
-        //to get all subsequent matches
+        // Match returns a range that can be iterated
+        // to get all subsequent matches.
         foreach(c; match(line, r))
             writeln(c.hit);
       }
   }
   ...
 
-  //create static regex at compile-time, contains fast native code
+  // Create a static regex at compile-time, which contains fast native code.
   enum ctr = ctRegex!(`^.*/([^/]+)/?$`);
 
-  //works just like normal regex:
-  auto m2 = match("foo/bar", ctr);   //first match found here if any
-  assert(m2);   // be sure to check if there is a match before examining contents!
-  assert(m2.captures[1] == "bar");   //captures is a range of submatches, 0 - full match
+  // It works just like a normal regex:
+  auto m2 = match("foo/bar", ctr);   // First match found here, if any
+  assert(m2);   // Be sure to check if there is a match before examining contents!
+  assert(m2.captures[1] == "bar");   // Captures is a range of submatches: 0 = full match.
 
   ...
 
-  //result of match is directly testable with if/assert/while
-  //e.g. test if a string consists of letters:
+  // The result of the match is directly testable with if/assert/while.
+  // e.g. test if a string consists of letters:
   assert(match("Letter", `^\p{L}+$`));
 
 
@@ -66,7 +66,7 @@
   $(REG_TABLE
     $(REG_TITLE Pattern element, Semantics )
     $(REG_TITLE Atoms, Match single characters )
-    $(REG_ROW any character except [|*+?(), Matches the character itself. )
+    $(REG_ROW any character except [{|*+?()^$, Matches the character itself. )
     $(REG_ROW ., In single line mode matches any charcter.
       Otherwise it matches any character except '\n' and '\r'. )
     $(REG_ROW [class], Matches a single character
@@ -1194,7 +1194,7 @@ struct Parser(R, bool CTFE=false)
 
     //parse and store IR for atom-quantifier pair
     @trusted void parseQuantifier(uint offset)
-    {//moveAll is @system
+    {//copy is @system
         uint replace = ir[offset].code == IR.Nop;
         if(empty && !replace)
             return;
@@ -1238,7 +1238,7 @@ struct Parser(R, bool CTFE=false)
         default:
             if(replace)
             {
-                moveAll(ir[offset+1..$],ir[offset..$-1]);
+                copyForwardAlt(ir[offset+1..$],ir[offset..$-1]);
                 ir.length -= 1;
             }
             return;
@@ -1287,7 +1287,7 @@ struct Parser(R, bool CTFE=false)
             }
             else if(replace)
             {
-                moveAll(ir[offset+1 .. $],ir[offset .. $-1]);
+                copyForwardAlt(ir[offset+1 .. $],ir[offset .. $-1]);
                 ir.length -= 1;
             }
             put(Bytecode(greedy ? IR.InfiniteStart : IR.InfiniteQStart, len));
@@ -1773,7 +1773,7 @@ struct Parser(R, bool CTFE=false)
     //try to generate optimal IR code for this CodepointSet
     @trusted void charsetToIr(in CodepointSet set)
     {//@@@BUG@@@ writeln is @system
-        uint chars = set.chars();
+        uint chars = set.chars;
         if(chars < Bytecode.maxSequence)
         {
             switch(chars)
@@ -1967,7 +1967,7 @@ public struct Regex(Char)
         ---
         Regex!char r;
         assert(r.empty);
-        r = regex("");//note: "" is a valid regex pattern
+        r = regex(""); // Note: "" is a valid regex pattern.
         assert(!r.empty);
         ---
     +/
@@ -2717,7 +2717,7 @@ public:
                     break;
                 default:
                 L_StopThread:
-                    assert(re.ir[t.pc].code >= 0x80);
+                    assert(re.ir[t.pc].code >= 0x80, text(re.ir[t.pc].code));
                     debug (fred_search) writeln("ShiftOr stumbled on ",re.ir[t.pc].mnemonic);
                     n_length = min(t.idx, n_length);
                     break L_Eval_Thread;
@@ -3765,6 +3765,10 @@ template BacktrackingMatcher(bool CTregex)
             debug(fred_matching) writeln("pop element SP= ", lastState);
         }
 
+        void stackPop(T)(T[] val)
+        {
+            stackPop(val);  // call ref version
+        }
         void stackPop(T)(ref T[] val)
         {
             lastState -= val.length*(T.sizeof/size_t.sizeof);
@@ -3785,7 +3789,7 @@ template BacktrackingMatcher(bool CTregex)
                 *cast(State*)&memory[lastState] =
                     State(index, pc, counter, infiniteNesting);
                 lastState += stateSize;
-                memory[lastState..lastState+2*matches.length] = cast(size_t[])matches[];
+                memory[lastState..lastState+2*matches.length] = (cast(size_t[])matches)[];
                 lastState += 2*matches.length;
                 debug(fred_matching)
                     writefln("Saved(pc=%s) front: %s src: %s"
@@ -4388,6 +4392,10 @@ struct CtContext
 
     // generate fixup code for instruction in ir,
     // fixup means it has an alternative way for control flow
+    string ctGenFixupCode(Bytecode[] ir, int addr, int fixup)
+    {
+        return ctGenFixupCode(ir, addr, fixup); // call ref Bytecode[] version
+    }
     string ctGenFixupCode(ref Bytecode[] ir, int addr, int fixup)
     {
         string r;
@@ -6143,9 +6151,9 @@ enum OneShot { Fwd, Bwd };
     {
         auto m = match("@abc#", regex(`(\w)(\w)(\w)`));
         auto c = m.captures;
-        assert(c.pre == "@");// part of input preceeding match
-        assert(c.post == "#"); // immediately after match
-        assert(c.hit == c[0] && c.hit == "abc");// the whole match
+        assert(c.pre == "@"); // Part of input preceeding match
+        assert(c.post == "#"); // Immediately after match
+        assert(c.hit == c[0] && c.hit == "abc"); // The whole match
         assert(c[2] =="b");
         assert(c.front == "abc");
         c.popFront();
@@ -6588,7 +6596,7 @@ public auto bmatch(R, RegEx)(R input, RegEx re)
 
     Example:
     ---
-    //Comify a number
+    // Comify a number
     auto com = regex(r"(?<=\d)(?=(\d\d\d)+\b)","g");
     assert(replace("12000 + 42100 = 54100", com, ",") == "12,000 + 42,100 = 54,100");
     ---
@@ -6774,7 +6782,7 @@ private:
 public:
     auto ref opSlice()
     {
-        return this.save();
+        return this.save;
     }
 
     ///Forward range primitives.
@@ -7460,7 +7468,7 @@ else
             assert(!m);
             debug(fred_test) writeln("!!! FReD REGRESSION test done "~matchFn.stringof~" !!!");
             auto rprealloc = regex(`((.){5}.{1,10}){5}`);
-            auto arr = array(replicate('0',100));
+            auto arr = array(repeat('0',100));
             auto m2 = matchFn(arr, rprealloc);
             assert(m2);
             assert(collectException(
@@ -7598,6 +7606,28 @@ else
     {// bugzilla 8637 purity of enforce
         auto m = match("hello world", regex("world"));
         enforce(m);
+    }
+
+    // bugzilla 8725 
+    unittest
+    {        
+      static italic = regex( r"\*
+                    (?!\s+)
+                    (.*?)
+                    (?!\s+)
+                    \*", "gx" );
+      string input = "this * is* interesting, *very* interesting";
+      assert(replace(input, italic, "<i>$1</i>") == 
+          "this * is* interesting, <i>very</i> interesting");
+    }
+
+    // bugzilla 8349
+    unittest
+    {
+        enum peakRegexStr = r"\>(wgEncode.*Tfbs.*\.(?:narrow)|(?:broad)Peak.gz)</a>";
+        enum peakRegex = ctRegex!(peakRegexStr);
+        //note that the regex pattern itself is probably bogus
+        assert(match(r"\>wgEncode-blah-Tfbs.narrow</a>", peakRegex));
     }
 }
 

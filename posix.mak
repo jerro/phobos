@@ -173,7 +173,7 @@ STD_MODULES = $(addprefix std/, algorithm array ascii base64 bigint		\
 
 STD_NET_MODULES = $(addprefix std/net/, isemail curl)
 
-STD_DIGEST_MODULES = $(addprefix std/digest/, digest crc md sha)
+STD_DIGEST_MODULES = $(addprefix std/digest/, digest crc md ripemd sha)
 
 # OS-specific D modules
 EXTRA_MODULES_LINUX := $(addprefix std/c/linux/, linux socket)
@@ -192,6 +192,7 @@ EXTRA_DOCUMENTABLES += $(addprefix etc/c/,curl sqlite3 zlib) $(addprefix	\
 std/c/, fenv locale math process stdarg stddef stdio stdlib string	\
 time wcharh)
 EXTRA_MODULES += $(EXTRA_DOCUMENTABLES) $(addprefix			\
+	std/internal/digest/, sha_SSSE3 ) $(addprefix \
 	std/internal/math/, biguintcore biguintnoasm biguintx86	\
 	gammafunction errorfunction) $(addprefix std/internal/, \
 	processinit uni uni_tab)

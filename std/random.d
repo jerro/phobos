@@ -1031,11 +1031,11 @@ auto n = rnd.front;
     if (!seeded)
     {
         uint threadID = cast(uint) cast(void*) Thread.getThis();
-        rand.seed((getpid() + threadID) ^ cast(uint) TickDuration.currSystemTick().length);
+        rand.seed((getpid() + threadID) ^ cast(uint) TickDuration.currSystemTick.length);
         seeded = true;
     }
     rand.popFront();
-    return cast(uint) (TickDuration.currSystemTick().length ^ rand.front);
+    return cast(uint) (TickDuration.currSystemTick.length ^ rand.front);
 }
 
 unittest
@@ -1319,9 +1319,55 @@ unittest
 }
 
 /**
-Generates a random floating-point number drawn from a
-normal (Gaussian) distribution with specified mean and
-standard deviation (sigma).
+Generates a random floating-point number drawn from a normal (Gaussian)
+distribution with specified mean and standard deviation (sigma).
+
+Many different algorithms are available for normal random number generation,
+and the optimal choice depends on a variety of different factors [see e.g.
+$(LINK2 http://www.cse.cuhk.edu.hk/~phwl/mt/public/archives/papers/grng_acmcs07.pdf,
+  Thomas et al. (2007)), $(I ACM Comput. Surv.) $(B 39)(4) 11].  For this reason,
+std.random provides a selection of different internal engines implementing different
+algorithms.  The default choice is currently a Box-Muller implementation that closely
+follows the C++ implementation in Boost.Random.  Alternatives can be specified as
+a template parameter.  The function implementations for normal random number generation
+use a thread-local static instance of the specified engine type.
+
+Example:
+
+----
+// Generate a normally-distributed random number
+// with mean 5 and standard deviation 7
+auto x = normal(5.0, 7.0);
+
+// Generate a normally-distributed random number
+// using the Ziggurat algorithm
+auto z = normal!NormalZigguratEngine64(5.0, 7.0);
+----
+
+The struct implementations for normal random number generation store the mean and
+standard deviation and contain their own internal instances of the specified engine.
+The convenience function normalRNG() is provided to facilitate construction of Normal
+struct instances.
+
+Example:
+
+----
+// Create a normal random number generator with mean 0
+// and standard deviation 4
+auto nrng = normalRNG(0.0, 4.0);
+
+// Generate a number using this generator
+auto x = nrng(rndGen);
+
+// Create a normal random number generator that uses
+// the Ziggurat algorithm
+auto nZig = normalRNG!NormalZigguratEngine64(0.0, 4.0);
+
+auto y = nZig(rndGen);
+----
+
+Return values for normal random numbers are based on the common type of mean and
+standard deviation if at least one is floating point, defaulting to double otherwise.
 */
 auto normal(alias NormalRandomNumberEngine = NormalBoxMullerEngine, T1, T2)
 (T1 mean, T2 sigma)
@@ -1367,17 +1413,82 @@ if (isNumeric!T1 && isNumeric!T2 && isUniformRNG!UniformRandomNumberGenerator)
 
 unittest
 {
+    // Check the type rules for normal()
     assert(is(typeof(normal(0, 1)) == double));
     assert(is(typeof(normal(0.0f, 1.0f)) == float));
+    assert(is(typeof(normal(0.0f, 1.0)) == double));
     assert(is(typeof(normal(0.0, 1.0)) == double));
+    assert(is(typeof(normal(0.0L, 1.0)) == real));
     assert(is(typeof(normal(0.0L, 1.0L)) == real));
+
+    /* Check that different engines are used for
+       double, float and real-valued normal random
+       number generation */
+    {
+        auto rng = Random(0);
+
+        auto normalDouble = normalRNG(0.0, 1.0);
+        auto d1 = normalDouble(rng);
+        auto d2 = normalDouble(rng);
+        assert(is(typeof(d1) == double));
+        assert(is(typeof(d2) == double));
+
+        rng.seed(0);
+        rng.popFront();
+        rng.popFront();
+        auto normalFloat = normalRNG(0.0f, 1.0f);
+        auto f1 = normalFloat(rng);
+        assert(is(typeof(f1) == float));
+
+        rng.seed(0);
+        rng.popFront();
+        rng.popFront();
+        auto normalReal = normalRNG(0.0L, 1.0L);
+        auto r1 = normalReal(rng);
+        assert(is(typeof(r1) == real));
+
+        rng.seed(0);
+        auto t1 = normal(0.0, 1.0, rng);   // these two calls should use
+        auto t2 = normal(0.0f, 1.0, rng);  // the same static engine (double)
+        assert(is(typeof(t1) == double));
+        assert(is(typeof(t2) == double));
+        assert(t1 == d1);
+        assert(t2 == d2);
+
+        rng.seed(0);
+        auto u1 = normal(0.0, 1.0, rng);   // these two calls shoud also use
+        auto u2 = normal(0, 1, rng);       // the same static engine (double)
+        assert(is(typeof(u1) == double));
+        assert(is(typeof(u2) == double));
+        assert(u1 == d1);
+        assert(u2 == d2);
+
+        rng.seed(0);
+        auto v1 = normal(0.0, 1.0, rng);   // should use double engine
+        auto v2 = normal(0.0f, 1.0f, rng); // should use new (float) engine
+        auto v3 = normal(0.0, 1.0, rng);   // should use double engine
+        assert(is(typeof(v1) == double));
+        assert(is(typeof(v2) == float));
+        assert(v1 == d1);
+        assert(v2 != d2);
+        assert(v2 == f1);
+        assert(v3 == d2);
+
+        rng.seed(0);
+        auto w1 = normal(0.0, 1.0, rng);   // should use double engine
+        auto w2 = normal(0.0, 1.0L, rng);  // should use new (real) engine
+        auto w3 = normal(0.0, 1.0, rng);   // should use double engine
+        assert(is(typeof(w1) == double));
+        assert(is(typeof(w2) == real));
+        assert(w1 == d1);
+        assert(w2 != d2);
+        assert(w2 != v2);   // because real is higher-precision than float
+        assert(w2 == r1);
+        assert(w3 == d2);
+    }
 }
 
-/**
-Struct implementation of normal (Gaussian) random number
-generation that stores the distribution parameters of mean
-and standard deviation (sigma)
-*/
+/// Ditto
 struct Normal(T = double, alias NormalRandomNumberEngine = NormalBoxMullerEngine)
 if (isFloatingPoint!T)
 {
@@ -1426,7 +1537,7 @@ if (isNumeric!T1 && isNumeric!T2)
 
 unittest
 {
-    // These unittests fail -- need to track down why.
+    // Check the type rules for Normal
     {
         auto nrng = normalRNG(0, 1);
         assert(is(typeof(nrng(rndGen)) == double));

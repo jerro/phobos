@@ -683,7 +683,6 @@ struct FormatSpec(Char)
     {
         union
         {
-            ubyte allFlags;
             mixin(bitfields!(
                         bool, "flDash", 1,
                         bool, "flZero", 1,
@@ -691,6 +690,7 @@ struct FormatSpec(Char)
                         bool, "flPlus", 1,
                         bool, "flHash", 1,
                         ubyte, "", 3));
+            ubyte allFlags;
         }
     }
 
@@ -1202,7 +1202,7 @@ unittest
    "0" with integral-specific format specs.
  */
 void formatValue(Writer, T, Char)(Writer w, T obj, ref FormatSpec!Char f)
-if (isBoolean!T && !is(T == enum) && !hasToString!(T, Char))
+if (is(BooleanTypeOf!T) && !is(T == enum) && !hasToString!(T, Char))
 {
     BooleanTypeOf!T val = obj;
 
@@ -1254,9 +1254,10 @@ unittest
    Integrals are formatted like $(D printf) does.
  */
 void formatValue(Writer, T, Char)(Writer w, T obj, ref FormatSpec!Char f)
-if (isIntegral!T && !is(T == enum) && !hasToString!(T, Char))
+if (is(IntegralTypeOf!T) && !is(T == enum) && !hasToString!(T, Char))
 {
-    IntegralTypeOf!T val = obj;
+    alias U = IntegralTypeOf!T;
+    U val = obj;
 
     if (f.spec == 'r')
     {
@@ -1277,12 +1278,12 @@ if (isIntegral!T && !is(T == enum) && !hasToString!(T, Char))
         return;
     }
 
-    // Forward on to formatIntegral to handle both T and const(T)
+    // Forward on to formatIntegral to handle both U and const(U)
     // Saves duplication of code for both versions.
-    static if (isSigned!T)
-        formatIntegral(w, cast(long) val, f, Unsigned!(T).max);
+    static if (isSigned!U)
+        formatIntegral(w, cast(long) val, f, Unsigned!U.max);
     else
-        formatIntegral(w, cast(ulong) val, f, T.max);
+        formatIntegral(w, cast(ulong) val, f, U.max);
 }
 
 private void formatIntegral(Writer, T, Char)(Writer w, const(T) val, ref FormatSpec!Char f, ulong mask)
@@ -1429,11 +1430,54 @@ unittest
     formatTest( S2(10), "S" );
 }
 
+// bugzilla 9117
+unittest
+{
+    static struct Frop {}
+
+    static struct Foo
+    {
+        int n = 0;
+        alias n this;
+        T opCast(T) () if (is(T == Frop))
+        {
+            return Frop();
+        }
+        string toString()
+        {
+            return "Foo";
+        }
+    }
+
+    static struct Bar
+    {
+        Foo foo;
+        alias foo this;
+        string toString()
+        {
+            return "Bar";
+        }
+    }
+
+    const(char)[] result;
+    void put(const char[] s){ result ~= s; }
+
+    Foo foo;
+    formattedWrite(&put, "%s", foo);    // OK
+    assert(result == "Foo");
+
+    result = null;
+
+    Bar bar;
+    formattedWrite(&put, "%s", bar);    // NG
+    assert(result == "Bar");
+}
+
 /**
  * Floating-point values are formatted like $(D printf) does.
  */
 void formatValue(Writer, T, Char)(Writer w, T obj, ref FormatSpec!Char f)
-if (isFloatingPoint!T && !is(T == enum) && !hasToString!(T, Char))
+if (is(FloatingPointTypeOf!T) && !is(T == enum) && !hasToString!(T, Char))
 {
     FormatSpec!Char fs = f; // fs is copy for change its values.
     FloatingPointTypeOf!T val = obj;
@@ -1459,6 +1503,35 @@ if (isFloatingPoint!T && !is(T == enum) && !hasToString!(T, Char))
     enforceEx!FormatException(
             std.algorithm.find("fgFGaAeEs", fs.spec).length,
             "floating");
+    version (Win64)
+    {
+        if (isnan(val)) // snprintf writes 1.#QNAN
+        {
+          version(none)
+          {
+            return formatValue(w, "nan", f);
+          }
+          else  // FIXME:workaroun
+          {
+            auto s = "nan"[0 .. f.precision < $ ? f.precision : $];
+            if (!f.flDash)
+            {
+                // right align
+                if (f.width > s.length)
+                    foreach (j ; 0 .. f.width - s.length) put(w, ' ');
+                put(w, s);
+            }
+            else
+            {
+                // left align
+                put(w, s);
+                if (f.width > s.length)
+                    foreach (j ; 0 .. f.width - s.length) put(w, ' ');
+            }
+            return;
+          }
+        }
+    }
     if (fs.spec == 's') fs.spec = 'g';
     char sprintfSpec[1 /*%*/ + 5 /*flags*/ + 3 /*width.prec*/ + 2 /*format*/
                      + 1 /*\0*/] = void;
@@ -1513,6 +1586,14 @@ unittest
                 string toString() const { return "S"; } }
     formatTest( S1(2.25), "2.25" );
     formatTest( S2(2.25), "S" );
+}
+
+unittest
+{
+    foreach (T; TypeTuple!(float, double, real))
+    {
+        formatTest( T.nan, "nan" );
+    }
 }
 
 /*
@@ -1601,7 +1682,7 @@ unittest
    integral-specific format specs.
  */
 void formatValue(Writer, T, Char)(Writer w, T obj, ref FormatSpec!Char f)
-if (isSomeChar!T && !is(T == enum) && !hasToString!(T, Char))
+if (is(CharTypeOf!T) && !is(T == enum) && !hasToString!(T, Char))
 {
     CharTypeOf!T val = obj;
 
@@ -1636,7 +1717,7 @@ unittest
    Strings are formatted like $(D printf) does.
  */
 void formatValue(Writer, T, Char)(Writer w, T obj, ref FormatSpec!Char f)
-if (isSomeString!T && !isStaticArray!T && !is(T == enum) && !hasToString!(T, Char))
+if (is(StringTypeOf!T) && !is(StaticArrayTypeOf!T) && !is(T == enum) && !hasToString!(T, Char))
 {
     Unqual!(StringTypeOf!T) val = obj;  // for `alias this`, see bug5371
     formatRange(w, val, f);
@@ -1677,7 +1758,7 @@ unittest
    Static-size arrays are formatted as dynamic arrays.
  */
 void formatValue(Writer, T, Char)(Writer w, auto ref T obj, ref FormatSpec!Char f)
-if (isStaticArray!T && !is(T == enum) && !hasToString!(T, Char))
+if (is(StaticArrayTypeOf!T) && !is(T == enum) && !hasToString!(T, Char))
 {
     formatValue(w, obj[], f);
 }
@@ -1702,7 +1783,7 @@ unittest    // Test for issue 8310
           $(LI Const array is converted to input range by removing its qualifier.))
  */
 void formatValue(Writer, T, Char)(Writer w, T obj, ref FormatSpec!Char f)
-if (isDynamicArray!T && !isSomeString!T && !is(T == enum) && !hasToString!(T, Char))
+if (is(DynamicArrayTypeOf!T) && !is(StringTypeOf!T) && !is(T == enum) && !hasToString!(T, Char))
 {
     static if (is(const(ArrayTypeOf!T) == const(void[])))
     {
@@ -1811,7 +1892,7 @@ unittest
     {
         string value;
         const @property bool empty(){ return !value.length; }
-        const @property dchar front(){ return value.front(); }
+        const @property dchar front(){ return value.front; }
         void popFront(){ value.popFront(); }
 
         const @property size_t length(){ return value.length; }
@@ -1902,10 +1983,10 @@ private void formatRange(Writer, T, Char)(ref Writer w, ref T val, ref FormatSpe
 if (isInputRange!T)
 {
     // Formatting character ranges like string
-    static if (isSomeChar!(ElementType!T))
+    static if (is(CharTypeOf!(ElementType!T)))
     if (f.spec == 's')
     {
-        static if (isSomeString!T)
+        static if (is(StringTypeOf!T))
         {
             auto s = val[0 .. f.precision < $ ? f.precision : $];
             if (!f.flDash)
@@ -1932,7 +2013,7 @@ if (isInputRange!T)
                     // right align
                     auto len = val.length;
                 }
-                else static if (isForwardRange!T)
+                else static if (isForwardRange!T && !isInfinite!T)
                 {
                     auto len = walkLength(val.save);
                 }
@@ -2082,7 +2163,7 @@ private void formatChar(Writer)(Writer w, in dchar c, in char quote)
 // undocumented
 // string elements are formatted like UTF-8 string literals.
 void formatElement(Writer, T, Char)(Writer w, T val, ref FormatSpec!Char f)
-if (isSomeString!T && !is(T == enum))
+if (is(StringTypeOf!T) && !is(T == enum))
 {
     StringTypeOf!T str = val;   // bug 8015
 
@@ -2103,7 +2184,7 @@ if (isSomeString!T && !is(T == enum))
                 formatChar(app, c, '"');
             }
             put(app, '\"');
-            put(w, app.data());
+            put(w, app.data);
             return;
         }
         catch (UTFException)
@@ -2152,7 +2233,7 @@ unittest
 // undocumented
 // character elements are formatted like UTF-8 character literals.
 void formatElement(Writer, T, Char)(Writer w, T val, ref FormatSpec!Char f)
-if (isSomeChar!T && !is(T == enum))
+if (is(CharTypeOf!T) && !is(T == enum))
 {
     if (f.spec == 's')
     {
@@ -2167,7 +2248,7 @@ if (isSomeChar!T && !is(T == enum))
 // undocumented
 // Maybe T is noncopyable struct, so receive it by 'auto ref'.
 void formatElement(Writer, T, Char)(Writer w, auto ref T val, ref FormatSpec!Char f)
-if (!isSomeString!T && !isSomeChar!T || is(T == enum))
+if (!is(StringTypeOf!T) && !is(CharTypeOf!T) || is(T == enum))
 {
     formatValue(w, val, f);
 }
@@ -2177,7 +2258,7 @@ if (!isSomeString!T && !isSomeChar!T || is(T == enum))
    separators, and enclosed by $(D '[') and $(D ']').
  */
 void formatValue(Writer, T, Char)(Writer w, T obj, ref FormatSpec!Char f)
-if (isAssociativeArray!T && !is(T == enum) && !hasToString!(T, Char))
+if (is(AssocArrayTypeOf!T) && !is(T == enum) && !hasToString!(T, Char))
 {
     AssocArrayTypeOf!T val = obj;
 
@@ -2349,7 +2430,7 @@ if (is(T == class) && !is(T == enum))
         put(w, "null");
     else
     {
-        static if (hasToString!(T, Char) > 1 || (!isInputRange!T && !isBuiltinType!T))
+        static if (hasToString!(T, Char) > 1 || (!isInputRange!T && !is(BuiltinTypeOf!T)))
         {
             formatObject!(Writer, T, Char)(w, val, f);
         }
@@ -2441,7 +2522,7 @@ unittest
 
 /// ditto
 void formatValue(Writer, T, Char)(Writer w, T val, ref FormatSpec!Char f)
-if (is(T == interface) && (hasToString!(T, Char) || !isBuiltinType!T) && !is(T == enum))
+if (is(T == interface) && (hasToString!(T, Char) || !is(BuiltinTypeOf!T)) && !is(T == enum))
 {
     if (val is null)
         put(w, "null");
@@ -2484,7 +2565,7 @@ unittest
 /// ditto
 // Maybe T is noncopyable struct, so receive it by 'auto ref'.
 void formatValue(Writer, T, Char)(Writer w, auto ref T val, ref FormatSpec!Char f)
-if ((is(T == struct) || is(T == union)) && (hasToString!(T, Char) || !isBuiltinType!T) && !is(T == enum))
+if ((is(T == struct) || is(T == union)) && (hasToString!(T, Char) || !is(BuiltinTypeOf!T)) && !is(T == enum))
 {
     static if (hasToString!(T, Char))
     {
@@ -2830,9 +2911,9 @@ private int getNthInt(A...)(uint index, A args)
         {
             return getNthInt(index - 1, args[1 .. $]);
         }
-        static if (is(typeof(args[0]) : long) || is(typeof(arg) : ulong))
+        static if (isIntegral!(typeof(args[0])))
         {
-            return to!(int)(args[0]);
+            return to!int(args[0]);
         }
         else
         {
@@ -4608,11 +4689,17 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
                 while (1)
                 {
                     sl = fbuf.length;
+                    int n;
                     version (Win64)
-                        auto n = snprintf(fbuf.ptr, sl, format.ptr, field_width,
+                    {
+                        if(isnan(v)) // snprintf writes 1.#QNAN
+                            n = snprintf(fbuf.ptr, sl, "nan");
+                        else
+                            n = snprintf(fbuf.ptr, sl, format.ptr, field_width,
                                 precision, cast(double)v);
+                    }
                     else
-                        auto n = snprintf(fbuf.ptr, sl, format.ptr, field_width,
+                        n = snprintf(fbuf.ptr, sl, format.ptr, field_width,
                                 precision, v);
                     //printf("format = '%s', n = %d\n", cast(char*)format, n);
                     if (n >= 0 && n < sl)
@@ -4645,10 +4732,10 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
          */
         void putArray(void* p, size_t len, TypeInfo valti)
         {
-          //printf("\nputArray(len = %u), tsize = %u\n", len, valti.tsize());
+          //printf("\nputArray(len = %u), tsize = %u\n", len, valti.tsize);
           putc('[');
           valti = skipCI(valti);
-          size_t tsize = valti.tsize();
+          size_t tsize = valti.tsize;
           auto argptrSave = argptr;
           auto tiSave = ti;
           auto mSave = m;
@@ -4753,7 +4840,7 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
                 else version (Win64)
                 {
                     void* q2 = void;
-                    auto valuesize = valti.tsize();
+                    auto valuesize = valti.tsize;
                     if (valuesize > 8 && m != Mangle.Tsarray)
                     {   q2 = pvalue;
                         argptr = &q2;
@@ -5012,12 +5099,12 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
                 version(X86)
                 {
                     s = tis.xtoString(argptr);
-                    argptr += (tis.tsize() + 3) & ~3;
+                    argptr += (tis.tsize + 3) & ~3;
                 }
                 else version(Win64)
                 {
                     void* p = argptr;
-                    if (tis.tsize() > 8)
+                    if (tis.tsize > 8)
                         p = *cast(void**)p;
                     s = tis.xtoString(p);
                     argptr += size_t.sizeof;
@@ -5026,7 +5113,7 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
                 {
                     void[32] parmn = void; // place to copy struct if passed in regs
                     void* p;
-                    auto tsize = tis.tsize();
+                    auto tsize = tis.tsize;
                     TypeInfo arg1, arg2;
                     if (!tis.argTypes(arg1, arg2))      // if could be passed in regs
                     {   assert(tsize <= parmn.length);
@@ -5038,7 +5125,7 @@ void doFormat(void delegate(dchar) putc, TypeInfo[] arguments, va_list argptr)
                          * it always being passed in memory
                          */
                         // The arg may have more strict alignment than the stack
-                        auto talign = tis.talign();
+                        auto talign = tis.talign;
                         __va_list* ap = cast(__va_list*)argptr;
                         p = cast(void*)((cast(size_t)ap.stack_args + talign - 1) & ~(talign - 1));
                         ap.stack_args = cast(void*)(cast(size_t)p + ((tsize + size_t.sizeof - 1) & ~(size_t.sizeof - 1)));
@@ -5404,20 +5491,20 @@ unittest
 
     debug(format) printf("std.format.format.unittest\n");
 
-    s = std.string.format("hello world! %s %s ", true, 57, 1_000_000_000, 'x', " foo");
+    s = std.string.format("hello world! %s %s %s%s%s", true, 57, 1_000_000_000, 'x', " foo");
     assert(s == "hello world! true 57 1000000000x foo");
 
-    s = std.string.format(1.67, " %A ", -1.28, float.nan);
+    s = std.string.format("%s %A %s", 1.67, -1.28, float.nan);
     /* The host C library is used to format floats.
      * C99 doesn't specify what the hex digit before the decimal point
      * is for %A.
      */
-    version (linux)
-        assert(s == "1.67 -0XA.3D70A3D70A3D8P-3 nan");
-    else version (OSX)
-        assert(s == "1.67 -0XA.3D70A3D70A3D8P-3 nan", s);
-    else
-        assert(s == "1.67 -0X1.47AE147AE147BP+0 nan");
+    //version (linux)
+    //    assert(s == "1.67 -0XA.3D70A3D70A3D8P-3 nan");
+    //else version (OSX)
+    //    assert(s == "1.67 -0XA.3D70A3D70A3D8P-3 nan", s);
+    //else
+        assert(s == "1.67 -0X1.47AE147AE147BP+0 nan", s);
 
     s = std.string.format("%x %X", 0x1234AF, 0xAFAFAFAF);
     assert(s == "1234af AFAFAFAF");
@@ -5428,19 +5515,19 @@ unittest
     s = std.string.format("%d %s", 0x1234AF, 0xAFAFAFAF);
     assert(s == "1193135 2947526575");
 
-    version(X86_64)
-    {
-        pragma(msg, "several format tests disabled on x86_64 due to bug 5625");
-    }
-    else
-    {
+    //version(X86_64)
+    //{
+    //    pragma(msg, "several format tests disabled on x86_64 due to bug 5625");
+    //}
+    //else
+    //{
         s = std.string.format("%s", 1.2 + 3.4i);
-        assert(s == "1.2+3.4i");
+        assert(s == "1.2+3.4i", s);
 
-        s = std.string.format("%x %X", 1.32, 6.78f);
-        assert(s == "3ff51eb851eb851f 40D8F5C3");
+        //s = std.string.format("%x %X", 1.32, 6.78f);
+        //assert(s == "3ff51eb851eb851f 40D8F5C3");
 
-    }
+    //}
 
     s = std.string.format("%#06.*f",2,12.345);
     assert(s == "012.35");
@@ -5508,63 +5595,57 @@ unittest
     arrbyte[0] = 100;
     arrbyte[1] = -99;
     arrbyte[3] = 0;
-    r = std.string.format(arrbyte);
-    assert(r == "[100,-99,0,0]");
+    r = std.string.format("%s", arrbyte);
+    assert(r == "[100, -99, 0, 0]");
 
     ubyte[] arrubyte = new ubyte[4];
     arrubyte[0] = 100;
     arrubyte[1] = 200;
     arrubyte[3] = 0;
-    r = std.string.format(arrubyte);
-    assert(r == "[100,200,0,0]");
+    r = std.string.format("%s", arrubyte);
+    assert(r == "[100, 200, 0, 0]");
 
     short[] arrshort = new short[4];
     arrshort[0] = 100;
     arrshort[1] = -999;
     arrshort[3] = 0;
-    r = std.string.format(arrshort);
-    assert(r == "[100,-999,0,0]");
-    r = std.string.format("%s",arrshort);
-    assert(r == "[100,-999,0,0]");
+    r = std.string.format("%s", arrshort);
+    assert(r == "[100, -999, 0, 0]");
 
     ushort[] arrushort = new ushort[4];
     arrushort[0] = 100;
     arrushort[1] = 20_000;
     arrushort[3] = 0;
-    r = std.string.format(arrushort);
-    assert(r == "[100,20000,0,0]");
+    r = std.string.format("%s", arrushort);
+    assert(r == "[100, 20000, 0, 0]");
 
     int[] arrint = new int[4];
     arrint[0] = 100;
     arrint[1] = -999;
     arrint[3] = 0;
-    r = std.string.format(arrint);
-    assert(r == "[100,-999,0,0]");
-    r = std.string.format("%s",arrint);
-    assert(r == "[100,-999,0,0]");
+    r = std.string.format("%s", arrint);
+    assert(r == "[100, -999, 0, 0]");
 
     long[] arrlong = new long[4];
     arrlong[0] = 100;
     arrlong[1] = -999;
     arrlong[3] = 0;
-    r = std.string.format(arrlong);
-    assert(r == "[100,-999,0,0]");
-    r = std.string.format("%s",arrlong);
-    assert(r == "[100,-999,0,0]");
+    r = std.string.format("%s", arrlong);
+    assert(r == "[100, -999, 0, 0]");
 
     ulong[] arrulong = new ulong[4];
     arrulong[0] = 100;
     arrulong[1] = 999;
     arrulong[3] = 0;
-    r = std.string.format(arrulong);
-    assert(r == "[100,999,0,0]");
+    r = std.string.format("%s", arrulong);
+    assert(r == "[100, 999, 0, 0]");
 
     string[] arr2 = new string[4];
     arr2[0] = "hello";
     arr2[1] = "world";
     arr2[3] = "foo";
-    r = std.string.format(arr2);
-    assert(r == "[hello,world,,foo]");
+    r = std.string.format("%s", arr2);
+    assert(r == `["hello", "world", "", "foo"]`);
 
     r = std.string.format("%.8d", 7);
     assert(r == "00000007");
@@ -5593,7 +5674,7 @@ unittest
     assert(r == "ghi");
 
     void* p = cast(void*)0xDEADBEEF;
-    r = std.string.format(p);
+    r = std.string.format("%s", p);
     assert(r == "DEADBEEF");
 
     r = std.string.format("%#x", 0xabcd);
@@ -5666,21 +5747,21 @@ unittest
     assert(r == "F");
 
     Object c = null;
-    r = std.string.format(c);
+    r = std.string.format("%s", c);
     assert(r == "null");
 
     enum TestEnum
     {
-            Value1, Value2
+        Value1, Value2
     }
     r = std.string.format("%s", TestEnum.Value2);
-    assert(r == "1");
+    assert(r == "Value2");
 
     immutable(char[5])[int] aa = ([3:"hello", 4:"betty"]);
     r = std.string.format("%s", aa.values);
-    assert(r == "[[h,e,l,l,o],[b,e,t,t,y]]");
+    assert(r == `["hello", "betty"]`);
     r = std.string.format("%s", aa);
-    assert(r == "[3:[h,e,l,l,o],4:[b,e,t,t,y]]");
+    assert(r == `[3:"hello", 4:"betty"]`);
 
     static const dchar[] ds = ['a','b'];
     for (int j = 0; j < ds.length; ++j)
@@ -5692,11 +5773,11 @@ unittest
             assert(r == " 98");
     }
 
-    r = std.string.format(">%14d<, ", 15, [1,2,3]);
-    assert(r == ">            15<, [1,2,3]");
+    r = std.string.format(">%14d<, %s", 15, [1,2,3]);
+    assert(r == ">            15<, [1, 2, 3]");
 
     assert(std.string.format("%8s", "bar") == "     bar");
-    assert(std.string.format("%8s", "b\u00e9ll\u00f4") == "   b\u00e9ll\u00f4");
+    assert(std.string.format("%8s", "b\u00e9ll\u00f4") == " b\u00e9ll\u00f4");
 }
 
 unittest

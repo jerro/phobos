@@ -1597,7 +1597,7 @@ unittest
 
     // save()
     auto ps1 = pathSplitter("foo/bar/baz");
-    auto ps2 = ps1.save();
+    auto ps2 = ps1.save;
     ps1.popFront();
     assert (equal2(ps1, ["bar", "baz"]));
     assert (equal2(ps2, ["foo", "bar", "baz"]));
@@ -2682,7 +2682,7 @@ string expandTilde(string inputPath)
 
             // Extract username, searching for path separator.
             string username;
-            auto last_char = std.algorithm.countUntil(path, dirSeparator[0]);
+            auto last_char = std.string.indexOf(path, dirSeparator[0]);
 
             if (last_char == -1)
             {

@@ -66,10 +66,6 @@
 module std.variant;
 
 import std.traits, std.c.string, std.typetuple, std.conv, std.exception;
-// version(unittest)
-// {
-    import std.exception, std.stdio;
-//}
 
 @trusted:
 
@@ -215,7 +211,7 @@ private:
             auto rhs = cast(VariantN *) parm;
             return rhs.peek!(A)
                 ? 0 // all uninitialized are equal
-                : int.min; // uninitialized variant is not comparable otherwise
+                : ptrdiff_t.min; // uninitialized variant is not comparable otherwise
         case OpID.toString:
             string * target = cast(string*) parm;
             *target = "<Uninitialized VariantN>";
@@ -326,17 +322,23 @@ private:
                     {
                         return *zis < *rhsPA ? -1 : 1;
                     }
+                    else
+                    {
+                        // Not equal, and type does not support ordering
+                        // comparisons.
+                        return ptrdiff_t.min;
+                    }
                 }
                 else
                 {
-                    // type doesn't support ordering comparisons
-                    return int.min;
+                    // Type does not support comparisons at all.
+                    return ptrdiff_t.min;
                 }
             } else if (rhsType == typeid(void))
             {
                 // No support for ordering comparisons with
                 // uninitialized vars
-                return int.min;
+                return ptrdiff_t.min;
             }
             VariantN temp;
             // Do I convert to rhs?
@@ -364,14 +366,20 @@ private:
                     {
                         return *zis < *rhsPA ? -1 : 1;
                     }
+                    else
+                    {
+                        // Not equal, and type does not support ordering
+                        // comparisons.
+                        return ptrdiff_t.min;
+                    }
                 }
                 else
                 {
-                    // type doesn't support ordering comparisons
-                    return int.min;
+                    // Type does not support comparisons at all.
+                    return ptrdiff_t.min;
                 }
             }
-            return int.min; // dunno
+            return ptrdiff_t.min; // dunno
         case OpID.toString:
             auto target = cast(string*) parm;
             static if (is(typeof(to!(string)(*zis))))
@@ -696,7 +704,7 @@ public:
     {
         static if (isNumeric!(T))
         {
-            if (convertsTo!real())
+            if (convertsTo!real)
             {
                 // maybe optimize this fella; handle ints separately
                 return to!T(get!real);
@@ -717,7 +725,7 @@ public:
 
             else
             {
-                enforce(false, text("Type ", type(), " does not convert to ",
+                enforce(false, text("Type ", type, " does not convert to ",
                                 typeid(T)));
                 assert(0);
             }
@@ -1047,7 +1055,7 @@ public:
     int opApply(Delegate)(scope Delegate dg) if (is(Delegate == delegate))
     {
         alias ParameterTypeTuple!(Delegate)[0] A;
-        if (type() == typeid(A[]))
+        if (type == typeid(A[]))
         {
             auto arr = get!(A[]);
             foreach (ref e; arr)
@@ -1069,7 +1077,7 @@ public:
         }
         else
         {
-            enforce(false, text("Variant type ", type(),
+            enforce(false, text("Variant type ", type,
                             " not iterable with values of type ",
                             A.stringof));
         }
@@ -1489,7 +1497,7 @@ unittest
 unittest
 {
     const x = Variant(42);
-    auto y1 = x.get!(const int)();
+    auto y1 = x.get!(const int);
     // @@@BUG@@@
     //auto y2 = x.get!(immutable int)();
 }
@@ -1534,6 +1542,29 @@ unittest
     // bug 7070
     Variant v;
     v = null;
+}
+
+// Ordering comparisons of incompatible types, e.g. issue 7990.
+unittest
+{
+    assertThrown!VariantException(Variant(3) < "a");
+    assertThrown!VariantException("a" < Variant(3));
+    assertThrown!VariantException(Variant(3) < Variant("a"));
+
+    assertThrown!VariantException(Variant.init < Variant(3));
+    assertThrown!VariantException(Variant(3) < Variant.init);
+}
+
+// Handling of unordered types, e.g. issue 9043.
+unittest
+{
+    static struct A { int a; }
+
+    assert(Variant(A(3)) != A(4));
+
+    assertThrown!VariantException(Variant(A(3)) < A(4));
+    assertThrown!VariantException(A(3) < Variant(A(4)));
+    assertThrown!VariantException(Variant(A(3)) < Variant(A(4)));
 }
 
 /**
@@ -1798,7 +1829,7 @@ private auto visitImpl(bool Strict, VariantType, Handler...)(VariantType variant
 
     enum HandlerOverloadMap = visitGetOverloadMap();
 
-    if (!variant.hasValue())
+    if (!variant.hasValue)
     {
         // Call the exception function. The HandlerOverloadMap
         // will have its exceptionFuncIdx field set to value != -1 if an
@@ -1811,7 +1842,7 @@ private auto visitImpl(bool Strict, VariantType, Handler...)(VariantType variant
 
     foreach(idx, T; AllowedTypes)
     {
-        if (T* ptr = variant.peek!T())
+        if (T* ptr = variant.peek!T)
         {
             enum dgIdx = HandlerOverloadMap.indices[idx];
 
