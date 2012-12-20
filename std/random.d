@@ -1386,6 +1386,7 @@ if (isFloatingPoint!T)
 
     this(T mean, T sigma)
     {
+        enforce(0 <= sigma, text("std.random.normal(): standard deviation ", sigma, " is less than zero"));
         _mean = mean;
         _sigma = sigma;
 
@@ -1406,7 +1407,7 @@ if (isFloatingPoint!T)
     T opCall(UniformRandomNumberGenerator)(ref UniformRandomNumberGenerator urng)
     if(isUniformRNG!UniformRandomNumberGenerator)
     {
-        return normal(_mean, _sigma, urng, _engine);
+        return _sigma * _engine(urng) + _mean;
     }
 }
 
@@ -1470,8 +1471,8 @@ if(isFloatingPoint!T)
             /* N.B. Traditional Box-Muller asks for random numbers
                in (0, 1], which D can readily provide.  We use this
                form to match the output of Boost.Random. */
-            _r1 = uniform!("[)", T, T)(0, 1, urng);
-            _r2 = uniform!("[)", T, T)(0, 1, urng);
+            _r1 = fastUniformFloat!T(urng);
+            _r2 = fastUniformFloat!T(urng);
             _rho = sqrt(-2 * log((cast(T) 1) - _r2));
             _valid = true;
         }
