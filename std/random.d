@@ -1497,6 +1497,7 @@ if (isFloatingPoint!T)
 
     this(T mean, T sigma)
     {
+        enforce(0 <= sigma, text("std.random.normal(): standard deviation ", sigma, " is less than zero"));
         _mean = mean;
         _sigma = sigma;
 
@@ -1517,7 +1518,7 @@ if (isFloatingPoint!T)
     T opCall(UniformRandomNumberGenerator)(ref UniformRandomNumberGenerator urng)
     if(isUniformRNG!UniformRandomNumberGenerator)
     {
-        return normal(_mean, _sigma, urng, _engine);
+        return _sigma * _engine(urng) + _mean;
     }
 }
 
@@ -1581,8 +1582,8 @@ if(isFloatingPoint!T)
             /* N.B. Traditional Box-Muller asks for random numbers
                in (0, 1], which D can readily provide.  We use this
                form to match the output of Boost.Random. */
-            _r1 = uniform!("[)", T, T)(0, 1, urng);
-            _r2 = uniform!("[)", T, T)(0, 1, urng);
+            _r1 = fastUniformFloat!T(urng);
+            _r2 = fastUniformFloat!T(urng);
             _rho = sqrt(-2 * log((cast(T) 1) - _r2));
             _valid = true;
         }
@@ -1689,70 +1690,102 @@ private auto intervalMinMax(alias f, alias fderiv, T)(T x0, T x1)
             y1 = ymid;
             d1 = dmid;
         }
+   
+        // this can happen if the function is completelly flat on the interval
+        // this happens when called from zigguratInitialize using 256 layers 
+        // and single precision.
+        assert(x0 == x1, "fderiv has the same sign on the entire interval");
     }
 }
 
+// Struct that stores informathion about the layer used in Ziggurat algorithm
+// (see http://en.wikipedia.org/wiki/Ziggurat_algorithm)
 private struct ZigguratLayer(T)
 {
-    // X coordinate of the crossection of upper layer bound and f
+    // X coordinate of the cros section of upper layer bound and f
     T x;
 
     // Upper bound of an interval from which we will select x
     T xInterval;
-    
+   
+    // We store lowOffset and highOffset in order to avoid having to compute
+    // the normal function in most cases. The two numbers are defined as
+    // follows:
+    // Consider the rectangle R whose upper left corner is the cross-section
+    // between the upper layer bound and f (where f is the distribution we are
+    // generating), and whose lower right corner is the cros section between 
+    // the lower layer bound and f. I will refer to this rectangle as the outer
+    // layer area in the comments below. Let's define k and y0 so that 
+    // y0 - k * x is the diagonal from the upper left corner to the lower right.
+    // Now let's define xh as the smallest such number that y0 - k * (x - xh) is
+    // greater than or equal to f(x) for all x in R. Also define xl as the 
+    // smallest number such that y0 - k * (x + xh) is less than or equal to f(x)
+    // for all x in R. Then lowOffset is xl / a and highOffset is xh / a, where
+    // a is the width of R.
     T lowOffset;
     
     T highOffset;
 }
 
-private auto zigguratInitialize(T)
-(ZigguratLayer!(T)[] layers, ref T tailX, ref T tailXInterval, T totalArea,
-    scope T delegate(T) f, scope T delegate(T) fint, scope T delegate(T) fderiv)
+// Initializes layers for generating the distribution described by f,
+// with integral fint, derivative fderiv and total area totalArea.
+private auto zigguratInitialize(T, U, F)
+(ZigguratLayer!(T)[] layers, U totalArea,
+    F f, F fint, F fderiv)
 {
-    auto zigguratInnerWidth(int i, int nlayers, T totalArea)
+    // Returns the x coordinate of the cross section between the upper 
+    // layer bound and f. Layer bounds are chosen so that the uppermost
+    // layer and the lowermost layer have area totalArea / (2 * layers.length)
+    // each and all the other layers have area totalArea / layers.length.
+    auto zigguratInnerWidth(int i, int nlayers, U totalArea)
     {
-        auto ai = totalArea * (cast(T)(nlayers - (i + 1)) + cast(T)0.5) / (nlayers);
-        auto func = (T x) => fint(x) - x * f(x) - ai; 
-     
-        T x0 = 0;
-        T x1= 1;
+        auto ai = totalArea * (cast(U)(nlayers - (i + 1)) + cast(U)0.5) / nlayers;
+        auto func = (U x) => fint(x) - x * f(x) - ai; 
+
+        U x0 = 0;
+        U x1= 1;
         while(func(x1) < 0)
             x1 += x1;
 
         return findRoot(func, x0, x1);
     }
-    
-    auto zigguratOffsets(T x0, T x1)
+
+    auto zigguratOffsets(U x0, U x1)
     {
         auto y0 = f(x0), y1 = f(x1);
         auto k = (y1 - y0) / (x1 - x0);
         auto n = y0 - x0*k;
         auto mm = intervalMinMax!(
-                (T x) => f(x) - (k * x + n), (T x) => fderiv(x) - k)(x0, x1);
+            (U x) => f(x) - (k * x + n), 
+            (U x) => fderiv(x) - k)(x0, x1);
+
         return tuple(-mm[0] / k, -mm[1] / k);
     }
 
     alias ZigguratLayer!(T) L; 
     auto nlayers = cast(int) layers.length;
 
-    T yprev = 0;
-    T xprev;
+    U yprev = 0;
+    U xprev;
     foreach(i; 0 .. nlayers)
     {
-        T x = zigguratInnerWidth(i, nlayers, totalArea);
-        T y = f(x);
-        T dy = y - yprev;
-        T innerArea = x * dy;
-        T xInterval = x * (totalArea / nlayers) / innerArea;
-        T dx = xprev - x;
-        T scaleY = dy / dx;
-        
+        //writefln("layer %s", i);
+        U x = zigguratInnerWidth(i, nlayers, totalArea);
+        U y = f(x);
+        U dy = y - yprev;
+        U innerArea = x * dy;
+        U xInterval = x * (totalArea / nlayers) / innerArea;
+        U dx = xprev - x;
+        U scaleY = dy / dx;
+
+        // Index 0 represents both the uppermost and the lowermost layer.
+        // We do not compute highOffset and lowOffset for those layers.
+        // lowOffset field is reused for a different purpose - we store 
+        // xInterval / 2 in it, so that x, randomly chosen between 0 and 
+        // xInterval can be used to select between the lowermost and
+        // the uppermost layer.
         if(i == 0)
-        {
-            layers[i] = L(0, 2, T.nan, T.nan);
-            tailX = x;
-            tailXInterval = xInterval / 2;
-        }
+            layers[i] = L(x, xInterval, xInterval / 2, U.nan);
         else
         {
             auto tmp = zigguratOffsets(x, xprev);
@@ -1769,6 +1802,10 @@ private template fraction(T, alias a, alias b)
     enum fraction = cast(T) a / cast(T) b;
 }
 
+// The implementation of the ziggurat algorithm. Only works on functions
+// that are only defined for x > 0. Layer must be a random number between 0
+// and zs.nlayers.length and x must be a random number between 0 and 1. For
+// the other parameters, see zigguratAlgorithm below.
 private auto zigguratAlgorithmImpl
 (alias f, alias tail, alias head, alias zs, alias rng)
 (int layer, ReturnType!f x) 
@@ -1780,25 +1817,27 @@ private auto zigguratAlgorithmImpl
     if(x < layerX)
         return x;
 
+    // we must choosee between the topmost and the bottomost later. 
     if(layer == 0)
     {
-        if(x < cast(T) 1)
-        {
-            x *= zs.tailXInterval;
-            return x < zs.tailX ? x : tail(zs.tailX, rng);
-        }
+        if(x < zs.layers[layer].lowOffset)
+            // choose the bottomost layer. if x was smaller than layerX,
+            // we would have already returned it above, so we know that we
+            // ned to choose from the tail here
+            return tail(layerX, rng);
         else 
-            return head(x - 1, rng);
+            return head(rng);
     }
 
-    T belowX = layer == 1 ? zs.tailX : zs.layers[layer - 1].x;
-    T dx = belowX - layerX;
+    T dx = zs.layers[layer - 1].x - layerX;
     T highOffset = zs.layers[layer].highOffset;
     T lowOffset = zs.layers[layer].lowOffset;
     T uInterval = 1 + highOffset;
 
     while(true)
     {
+        // Choose a random point in the triangle described by
+        // ux > 0, uy > -1, uy < highOffset - ux 
         T uy = uInterval * fastUniformFloat!T(rng);
         T ux = uInterval * fastUniformFloat!T(rng);
       
@@ -1808,12 +1847,18 @@ private auto zigguratAlgorithmImpl
 
         x = layerX + ux * dx;
 
+        // Force uy to be less than zero and ux to be less than one. This is
+        // equivalent to randomly choosing a point in the outer layer area
+        // with y < y0 - k * (x - xh) (See the comments for ZigguratLayer)
         if(uy > 0 || ux > 1)
             continue; 
 
+        // This is equivalen to checking that y < y0 - k * (x + xl) 
+        // (See the comments for ZigguratLayer). If that is true,
+        // y must also be below f, so we don't need to compute f. 
         if(uy < lowOffset - ux)
             return x;
-     
+    
         T layerY = f(layerX);
         T dy = layerY - f(layerX + dx);
         T y = layerY + uy * dy;
@@ -1822,6 +1867,11 @@ private auto zigguratAlgorithmImpl
     }
 }
 
+// Returns a random sample using the ziggurat algorithm. f is the distribution,
+// tail is the function used to select a sample from the tail area, head
+// is the function used to select a sample from the uppermost layer, zs must 
+// be something with layers property and zs.layers must be an array of 
+// ZigguratLayer.
 private auto zigguratAlgorithm
 (alias f, alias tail, alias head, alias zs, bool isSymetric, alias rng)()
 {
@@ -1829,103 +1879,134 @@ private auto zigguratAlgorithm
 
     int rand;
     T a;
+    // choose rand between below 2 * zs.nlayers. This gives us one
+    // extra random bit which we will use to choose the sign
     fastUniformIntAndFloat!(2 * zs.nlayers)(rng, rand, a);
  
     auto r = zigguratAlgorithmImpl!(
         f, tail, head, zs, rng)(rand >> 1, a);
  
     static if(isSymetric)
-        return rand & 1 ? r : -r;
+    {
+        // randomly choose a sign
+        // flip the highest bit to change the sign, if possible
+        static if(is(T == float))
+        {
+            auto rint = (rand << 31) ^ *cast(uint*) &r;
+            return *cast(T*) &rint;
+        }
+        else static if(is(T == double) && is(size_t == ulong))
+        {
+            auto rint = (cast(ulong)rand << 63) ^ *cast(ulong*) &r;
+            return *cast(T*) &rint;
+        }
+        else
+            return rand & 1 ? r : -r;
+    }
     else
         return r;
 }
 
-template NormalZigguratEngineImpl(int n)
-{
-    struct NormalZigguratEngineImpl(T)
-    if(isFloatingPoint!T && isPowerOfTwo(n))
-    {
-        void initialize()
-        {
-            layers = new L[nlayers];
-            zigguratInitialize(
-                layers, tailX, tailXInterval, area, 
-                delegate (T x) => f(x), 
-                delegate (T x) => fint(x), 
-                delegate (T x) => fderiv(x)); 
-            
-            headDx = layers.back.x;
-            headDy = cast(T) 1 - exp(- (headDx) ^^ 2 * cast(T) 0.5);
-        }
-            
-        T opCall(Rng)(ref Rng rng)
-        if(isUniformRNG!Rng)
-        {
-            return zigguratAlgorithm!(f, tail, head, this, true, rng)();
-        }
-      
-      private:
+/**
+Generates a random floating-point number drawn from a
+normal (Gaussian) distribution with mean 0 and standard
+deviation (sigma) 1, using the Ziggurat algorithm.
 
-        static T f(T x)
+This engine has high sampling speed, but uses more memory (a kilobyte or so) 
+than the alternatives and has a relatively long initialization time (somewhere 
+around a millisecond on a modern X86 CPU).
+ */
+struct NormalZigguratEngine(T) if(isFloatingPoint!T)
+{
+    // use 128 layers - I found this to be the best size / performance
+    // trade off. We could have multiple NormalZigguratEngines with 
+    // different numbers of layers, but if the user isn't willing to trade
+    // initialization time and size for sampling speed, he should use
+    // some other engine, like Box-Muller
+    enum int n = 128;
+
+    /// Initializes the engine. This must be called before the first call to
+    /// opCall
+    void initialize()
+    {
+        alias Select!(is(T == float), double, T) U;
+
+        static U f(U x)
         {
             return exp(-x ^^ 2 / 2) / sqrt(2 * PI);
         }
 
-        static T fint(T x)
+        static U fint(U x)
         {
             return erf(x / sqrt(2.0)) / 2 ;
         }
 
-        static T fderiv(T x)
+        static U fderiv(U x)
         {
             return -x * exp(-x ^^ 2 / 2) / sqrt(2 * PI);
         }
 
-        enum area = cast(T) 0.5;
-
-        enum nlayers = n;
-        alias ZigguratLayer!T L;
-
-        L[] layers;
-        T tailX;
-        T tailXInterval;
-        T headDx;
-        T headDy;
-     
-        auto head(Rng)(T x, ref Rng rng)
-        {
-            x *= headDx;
-
-            while(true)
-            {
-                T y = fastUniformFloat!T(rng) * headDy;
-                T x2 = x * x;
-                T approx = fraction!(T, 1, 2) * x2;
-                if(y > approx)
-                    return x;
-
-                approx -= fraction!(T, 1, 8) * x2 * x2;
-                if(y > approx && y > cast(T) 1 - exp(-x * x * cast(T) 0.5))
-                    return x;
-
-                x = fastUniformFloat!T(rng) * headDx;
-            }
-        }
+        layers = new L[nlayers];
+        zigguratInitialize!(T, U)( layers,  0.5, &f, &fint, &fderiv); 
         
-        static T tail(Rng)(T x0, ref Rng rng)
+        headDx = layers.back.x;
+        headDy = cast(T) 1 - exp(- (headDx) ^^ 2 * cast(T) 0.5);
+    }
+    
+    /// Computes a random sample using rng 
+    T opCall(Rng)(ref Rng rng)
+    if(isUniformRNG!Rng)
+    {
+        return zigguratAlgorithm!(f, tail, head, this, true, rng)();
+    }
+  
+    private:
+
+    static T f(T x)
+    {
+        return exp(-x ^^ 2 / 2) / sqrt(2 * PI);
+    }
+
+    enum nlayers = n;
+    alias ZigguratLayer!T L;
+
+    L[] layers;
+    T headDx;
+    T headDy;
+
+    auto head(Rng)(ref Rng rng)
+    {
+        while(true)
         {
-            while(true)
-            {
-                T x = -log(fastUniformFloat!T(rng)) / x0;
-                T y = -log(fastUniformFloat!T(rng));
-                if(y + y > x * x)
-                    return x0 + x;
-            }
+            T x = fastUniformFloat!T(rng) * headDx;
+            T y = fastUniformFloat!T(rng) * headDy;
+            T x2 = x * x;
+            // An approximation for 1 - f  using one term of the Taylor series. 
+            // This is an upper bound.
+            T approx = fraction!(T, 1, 2) * x2;
+            if(y > approx)
+                return x;
+
+            // An approximation using two terms of the Taylor series
+            // This is a lower bound.
+            approx -= fraction!(T, 1, 8) * x2 * x2;
+            if(y > approx && y > cast(T) 1 - exp(-x * x * cast(T) 0.5))
+                return x;
+        }
+    }
+   
+    static T tail(Rng)(T x0, ref Rng rng)
+    {
+        // the new Marsaglia Tail Method
+        while(true)
+        {
+            T x = -log(fastUniformFloat!T(rng)) / x0;
+            T y = -log(fastUniformFloat!T(rng));
+            if(y + y > x * x)
+                return x0 + x;
         }
     }
 }
-
-alias NormalZigguratEngineImpl!64 NormalZigguratEngine64;
 
 /**
 Shuffles elements of $(D r) using $(D gen) as a shuffler. $(D r) must be
