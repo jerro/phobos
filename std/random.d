@@ -1601,7 +1601,7 @@ private template hasCompileTimeMinMax(alias a)
         is(typeof(ct!(a.max))) && is(typeof(ct!(a.min)));
 }
 
-private auto isPowerOfTwo(I)(I i){ return (i & (i - 1)) == 0; }
+private bool isPowerOfTwo(I)(I i){ return (i & (i - 1)) == 0; }
 
 private template rngMask(alias r) 
     if(hasCompileTimeMinMax!r && isPowerOfTwo(r.max - r.min + 1))
@@ -1694,7 +1694,7 @@ private auto intervalMinMax(alias f, alias fderiv, T)(T x0, T x1)
         // this can happen if the function is completelly flat on the interval
         // this happens when called from zigguratInitialize using 256 layers 
         // and single precision.
-        assert(x0 == x1, "fderiv has the same sign on the entire interval");
+        enforce(x0 == x1, "fderiv has the same sign on the entire interval");
     }
 }
 
@@ -1744,6 +1744,7 @@ private auto zigguratInitialize(T, U, F)
 
         U x0 = 0;
         U x1= 1;
+
         while(func(x1) < 0)
             x1 += x1;
 
@@ -1769,7 +1770,6 @@ private auto zigguratInitialize(T, U, F)
     U xprev;
     foreach(i; 0 .. nlayers)
     {
-        //writefln("layer %s", i);
         U x = zigguratInnerWidth(i, nlayers, totalArea);
         U y = f(x);
         U dy = y - yprev;
